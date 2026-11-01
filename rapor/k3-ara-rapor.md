@@ -41,7 +41,7 @@ SAY modunda: `engellenen system call sayisi: 1` / `engellendi: unshare (nr=272) 
 Çözüm: tam iz ayrıştırma; sınır testle sabitlendi (T3).
 
 ## 5. Yarım kalanlar (K3 öncesi yapılacak)
-- [ ] ≤ 3 dk demo videosunun çekilmesi (`demo/demo-senaryosu.md` hazır, video yok)
+- [x] ≤ 3 dk demo videosu hazır ve YouTube'a yüklendi: https://youtu.be/lY2M5FW9Pzk (172,84 sn; Remotion + ElevenLabs; kayıt sahnesi `demo/demo-senaryosu.md`)
 - [ ] `v0.5` etiketi (K3 tarihinde, gerçek commit geçmişiyle)
 - [x] Kırılma testleri yapıldı (v0.2): bkz. `rapor/final-rapor.md` §6
 - [ ] LOG modunun audit kaydı (`sig=0`) örneği

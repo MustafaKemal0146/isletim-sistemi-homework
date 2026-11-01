@@ -7,6 +7,11 @@ Bir programın gerçekten kullandığı system call'ları **çalışırken otoma
 izin veren bir seccomp-bpf sandbox'ı. Amaç saldırı değil, **sertleştirme**: bir süreç ele geçirilse
 bile çekirdeğe açılan kapıyı daraltmak.
 
+## Demo videosu (2 dk 53 sn)
+[![Demo videosu: seccomp ile System Call İzin Listesi](docs/video-kapak.png)](https://youtu.be/lY2M5FW9Pzk)
+
+▶ https://youtu.be/lY2M5FW9Pzk — profil çıkarma, SIGSYS ile ihlal, kırılma testleri ve mimari atlatma denemeleri.
+
 ## Büküm (projeye özgü katkı)
 1. İzin listesi elle yazılmaz; `strace -f` izinden, 3 senaryodan (normal/hata/socket) çıkarılır.
 2. Profilin **kapattığı** syscall sayısı ölçülür: libseccomp 2.5.5'in x86_64 tablosundaki 368 çağrıdan **45 izinli, 323 kapalı (%87,8)**.
