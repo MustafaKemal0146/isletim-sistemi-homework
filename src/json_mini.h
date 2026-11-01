@@ -266,8 +266,15 @@ static inline int js_kayit(js_oku *j, sc_liste *l)
     return sc_ekle(l, ad, cagri, hata) < 0 ? js_hata(j, "bellek yetersiz") : 0;
 }
 
+/* Header fields of a profile (optional out-parameter of js_profil_oku). */
+typedef struct {
+    long surum;
+    char arch[32], libseccomp[32];
+    int surum_var, arch_var, lib_var;
+} js_meta;
+
 /* Parse a whole profile document. 0 ok, -1 error (message in j->hata). */
-static inline int js_profil_oku(const char *metin, size_t n, sc_liste *l, char *hata, size_t hata_boy)
+static inline int js_profil_oku(const char *metin, size_t n, sc_liste *l, js_meta *meta, char *hata, size_t hata_boy)
 {
     js_oku j = { .p = metin, .son = metin + n, .bas = metin, .hata = "" };
     char anahtar[32];
@@ -299,6 +306,15 @@ static inline int js_profil_oku(const char *metin, size_t n, sc_liste *l, char *
                     goto bitir;
                 }
             }
+        } else if (meta && !strcmp(anahtar, "surum")) {
+            if (js_tam_sayi(&j, &meta->surum) < 0) goto bitir;
+            meta->surum_var = 1;
+        } else if (meta && !strcmp(anahtar, "arch")) {
+            if (js_dize(&j, meta->arch, sizeof meta->arch) < 0) goto bitir;
+            meta->arch_var = 1;
+        } else if (meta && !strcmp(anahtar, "libseccomp")) {
+            if (js_dize(&j, meta->libseccomp, sizeof meta->libseccomp) < 0) goto bitir;
+            meta->lib_var = 1;
         } else if (js_deger(&j, 1) < 0) {
             goto bitir;
         }

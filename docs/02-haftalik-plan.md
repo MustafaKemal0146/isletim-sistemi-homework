@@ -1,6 +1,6 @@
 # 02 — Haftalık Plan
 
-> **Güncelleme 01.11.2026:** Çekirdek akış (hedef, profil, filtre, sandbox, ölçüm, 23 test grubu) ilk
+> **Güncelleme 01.11.2026:** Çekirdek akış (hedef, profil, filtre, sandbox, ölçüm, 28 test grubu) ilk
 > gün tamamlandı. Aşağıdaki W2–W6 satırlarının işi öne çekildi; kalan haftalar **gerçek** sağlamlaştırma
 > işi içindir (temiz ortam doğrulaması, kırılma testleri, video, ek senaryolar). Tarihler geriye
 > alınmaz; her hafta kendi commit'leriyle ilerler.

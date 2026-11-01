@@ -6,6 +6,10 @@
  *   socket  AF_UNIX socketpair + TCP over 127.0.0.1
  *   tam     normal + hata + socket
  *   ihlal   normal, then one syscall that no profile contains (unshare)
+ *   uzun [sn]       long-running loop (kill -9 test)
+ *   disk <dizin>    write until the filesystem is full (ENOSPC test)
+ *   bellek <MB>     allocate and touch MB megabytes (MemoryMax / OOM test)
+ *   hesap [milyon]  CPU-bound deterministic computation (CPUQuota test)
  *
  * stdout is deterministic so sandboxed and unsandboxed runs can be diffed.
  */
@@ -205,6 +209,83 @@ static int senaryo_ihlal(void)
     return 0;
 }
 
+/* ---- uzun: runs for `sn` seconds, one line per second ---- */
+static int senaryo_uzun(int sn)
+{
+    struct timespec t = { 0, 100000000 };
+    for (int i = 0; i < sn * 10; i++) {
+        nanosleep(&t, NULL);
+        if (i % 10 == 0) {
+            printf("hedef: uzun tik %d\n", i / 10);
+            fflush(stdout);
+        }
+    }
+    printf("hedef: uzun tamam\n");
+    return 0;
+}
+
+/* ---- disk: fill the directory's filesystem; ENOSPC must be reported, not crash ---- */
+static int senaryo_disk(const char *dizin)
+{
+    char yol[256];
+    static unsigned char buf[64 * 1024];
+    snprintf(yol, sizeof yol, "%s/dolgu.bin", dizin);
+    memset(buf, 0x5A, sizeof buf);
+    int fd = open(yol, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    if (fd < 0) { fprintf(stderr, "hedef: '%s' acilamadi: %s\n", yol, strerror(errno)); return CIKIS_SISTEM; }
+    size_t toplam = 0;
+    for (;;) {
+        ssize_t w = write(fd, buf, sizeof buf);
+        if (w < 0) {
+            int e = errno;
+            fprintf(stderr, "hedef: disk dolu: write basarisiz: %s (errno=%d), yazilan=%zu KB\n", strerror(e),
+                    e, toplam / 1024);
+            close(fd);
+            unlink(yol);
+            fprintf(stderr, "hedef: gecici dosya silindi, temiz cikis\n");
+            return CIKIS_SISTEM;
+        }
+        toplam += (size_t)w;
+        if (toplam > ((size_t)4096 << 20)) { /* safety: never write more than 4 GiB */
+            fprintf(stderr, "hedef: guvenlik siniri asildi (disk dolmadi)\n");
+            close(fd);
+            unlink(yol);
+            return CIKIS_SISTEM;
+        }
+    }
+}
+
+/* ---- bellek: touch `mb` MiB in 1 MiB chunks ---- */
+static int senaryo_bellek(int mb)
+{
+    void **p = calloc((size_t)mb, sizeof *p);
+    if (!p) return CIKIS_SISTEM;
+    for (int i = 0; i < mb; i++) {
+        p[i] = malloc(1u << 20);
+        if (!p[i]) { fprintf(stderr, "hedef: malloc basarisiz (%d MiB)\n", i); return CIKIS_SISTEM; }
+        memset(p[i], i, 1u << 20);
+        if (i % 8 == 7) { printf("hedef: bellek %d MiB dokunuldu\n", i + 1); fflush(stdout); }
+    }
+    for (int i = 0; i < mb; i++) free(p[i]);
+    free(p);
+    printf("hedef: bellek tamam %d MiB\n", mb);
+    return 0;
+}
+
+/* ---- hesap: xorshift64 loop, no syscalls; result must not depend on CPU limits ---- */
+static int senaryo_hesap(unsigned long milyon)
+{
+    uint64_t x = 88172645463325252ull, toplam = 0;
+    for (unsigned long i = 0; i < milyon * 1000000ul; i++) {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        toplam += x;
+    }
+    printf("hedef: hesap %luM sonuc=%016llx\n", milyon, (unsigned long long)toplam);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     const char *s = argc > 1 ? argv[1] : "tam";
@@ -214,9 +295,13 @@ int main(int argc, char **argv)
     else if (!strcmp(s, "hata"))   r = senaryo_hata();
     else if (!strcmp(s, "socket")) r = senaryo_socket();
     else if (!strcmp(s, "ihlal"))  r = senaryo_ihlal();
+    else if (!strcmp(s, "uzun"))   r = senaryo_uzun(argc > 2 ? atoi(argv[2]) : 30);
+    else if (!strcmp(s, "disk") && argc > 2)   r = senaryo_disk(argv[2]);
+    else if (!strcmp(s, "bellek") && argc > 2) r = senaryo_bellek(atoi(argv[2]));
+    else if (!strcmp(s, "hesap"))  r = senaryo_hesap(argc > 2 ? strtoul(argv[2], NULL, 10) : 300);
     else if (!strcmp(s, "tam"))    r = senaryo_normal() | senaryo_hata() | senaryo_socket();
     else {
-        fprintf(stderr, "kullanim: %s normal|hata|socket|tam|ihlal\n", argv[0]);
+        fprintf(stderr, "kullanim: %s normal|hata|socket|tam|ihlal|uzun [sn]|disk dizin|bellek MB|hesap [milyon]\n", argv[0]);
         return CIKIS_KULLANIM;
     }
     return r ? CIKIS_SISTEM : CIKIS_OK;

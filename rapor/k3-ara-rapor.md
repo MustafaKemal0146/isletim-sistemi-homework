@@ -9,7 +9,7 @@ profil çıkar (3 senaryo) → birleştir → `profiller/hedef.seccomp` → `san
 başarılı → `ihlal_testi` iki modda BASARILI.
 
 ## 2. Testler
-`make test`: 5 betik, **23 test grubu (T1–T22, T9b), 89 kontrol, hepsi yeşil** (`olcum/2026-11-01-test.txt`). `make asan` (`-asan.txt`) yalnızca profil/filtre/hata testlerini kapsar; ptrace döngüsü (SAY) ve sandbox altı testler sanitizer'sız çalışır.
+`make test`: 7 betik, **28 test grubu (T1–T27, T9b), 117 kontrol, hepsi yeşil** (`olcum/2026-11-01-test.txt`). `make asan` (`-asan.txt`) yalnızca profil/filtre/hata testlerini kapsar; ptrace döngüsü (SAY) ve sandbox altı testler sanitizer'sız çalışır.
 `make` sıfır uyarı (`-Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic`).
 
 | Konu | Test |
@@ -43,6 +43,6 @@ SAY modunda: `engellenen system call sayisi: 1` / `engellendi: unshare (nr=272) 
 ## 5. Yarım kalanlar (K3 öncesi yapılacak)
 - [ ] ≤ 3 dk demo videosunun çekilmesi (`demo/demo-senaryosu.md` hazır, video yok)
 - [ ] `v0.5` etiketi (K3 tarihinde, gerçek commit geçmişiyle)
-- [ ] Kırılma testleri: `kill -9`, disk dolu, `MemoryMax`, `CPUQuota` (yalnızca tasarım var)
+- [x] Kırılma testleri yapıldı (v0.2): bkz. `rapor/final-rapor.md` §6
 - [ ] LOG modunun audit kaydı (`sig=0`) örneği
 - [ ] Temiz ortamda (Docker) test koşusunun sonucu

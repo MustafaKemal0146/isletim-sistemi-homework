@@ -1,0 +1,18 @@
+# kirilma-cpu — 2026-11-01 21:27:35  (hedef hesap 300M, sandbox KILL + profil, 5 tekrar)
+etiket,tekrar,sure_ms,sonuc
+sinirsiz,1,397.579,79dea8608c645e2d
+sinirsiz,2,397.053,79dea8608c645e2d
+sinirsiz,3,398.879,79dea8608c645e2d
+sinirsiz,4,409.002,79dea8608c645e2d
+sinirsiz,5,400.521,79dea8608c645e2d
+quota20,1,1981.641,79dea8608c645e2d
+quota20,2,1926.240,79dea8608c645e2d
+quota20,3,2023.484,79dea8608c645e2d
+quota20,4,1929.416,79dea8608c645e2d
+quota20,5,1958.753,79dea8608c645e2d
+
+| Kosul | sure_ms (ort ± sd) | min–max | sonuc (tum tekrarlar) |
+|---|---|---|---|
+| sinirsiz | 400.6 ± 4.9 | 397.1–409.0 | 79dea8608c645e2d (1 farkli) |
+| quota20 | 1963.9 ± 40.3 | 1926.2–2023.5 | 79dea8608c645e2d (1 farkli) |
+yavaslama: x4.90 (beklenen ~5x: %20 kota)

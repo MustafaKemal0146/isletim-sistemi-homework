@@ -26,7 +26,7 @@ Gereksinim: Ubuntu 24.04 (veya WSL2), `gcc make pkg-config strace`. **Root gerek
 git clone https://github.com/MustafaKemal0146/isletim-sistemi-homework && cd isletim-sistemi-homework
 sudo scripts/kur.sh          # sudo yoksa:  scripts/kur-rootsuz.sh   (libseccomp-dev'i .deps'e indirir)
 make                         # -Wall -Wextra -Werror, sıfır uyarı
-make test                    # 23 test grubu (T1–T22, T9b), 89 kontrol
+make test                    # 28 test grubu (T1–T27, T9b), 117 kontrol
 bash scripts/calistir.sh     # profil çıkar → filtre üret → KILL ile çalıştır → ihlal göster
 ```
 Sonra:
@@ -36,6 +36,9 @@ bin/sandbox --mod errno --profil profiller/hedef.seccomp -- bin/hedef ihlal     
 bin/sandbox --mod say   --profil profiller/hedef.seccomp -- bin/hedef ihlal            # engellenen sayısı + adı
 bash scripts/audit_kaniti.sh                                                           # strace/journalctl/dmesg kanıtı
 TEKRAR=5 bash tools/olcum.sh                                                           # 5 tekrarlı ölçüm → olcum/
+bin/arch_testi --profil profiller/hedef.seccomp                                       # x32 / int 0x80 ile filtre atlatma denemeleri
+make kirilma                 # kırılma testleri: kill -9, disk dolu (tmpfs), MemoryMax=32M, CPUQuota=20% → olcum/kirilma-*.txt
+bash tools/rss_dogrula.sh    # RSS sütununun bağımsız doğrulaması
 make asan                    # ASan/UBSan (profil/filtre/hata testleri; ptrace döngüsü ve sandbox altı testler kapsam dışı)
 bash scripts/test.sh         # temiz derleme + tüm testler + ASan (docker compose run --rm test aynısını yapar)
 ```
@@ -47,7 +50,7 @@ bash scripts/test.sh         # temiz derleme + tüm testler + ASan (docker compo
 | `tools/profil.c`, `tools/profil_uret.c`, `tools/ihlal_testi.c` | profil çıkarma, filtre üretimi, ihlal kanıtı |
 | `tools/olcum.sh`, `tools/grafik.py` | ölçüm ve grafik |
 | `profiller/` | üretilen profil (`hedef.json`, `hedef.seccomp`, `hedef.bpf`) |
-| `test/` | 5 betik, T1–T22, T9b |
+| `test/` | 7 betik, T1–T27, T9b |
 | `olcum/` | CSV, özet, PNG |
 | `docs/`, `rapor/`, `demo/` | belgeler, K1–final raporları, video senaryosu |
 | `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` | temiz ortam ve CI |

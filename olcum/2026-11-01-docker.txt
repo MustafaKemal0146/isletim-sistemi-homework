@@ -1,5 +1,5 @@
-# docker compose build/run --rm test (ozet: yalnizca kosu cikti, build gunlugu atildi)
-Linux 6f9fe0e770d5 7.0.0-42-generic #42~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Mon Oct 19 14:43:01 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+# docker compose build + run --rm test (v0.2 kodu; build gunlugu atildi)
+Linux 486eb0ac161e 7.0.0-42-generic #42~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Mon Oct 19 14:43:01 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
 cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
 libseccomp 2.5.5 (sistem)
 strace -- version 6.8
@@ -8,11 +8,36 @@ rm -rf bin
 mkdir -p bin
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc -pthread -o bin/hedef src/hedef.c 
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc  -o bin/sandbox src/sandbox.c  -lseccomp 
-cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc -o bin/profil tools/profil.c 
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc  -o bin/profil tools/profil.c 
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc  -o bin/profil_uret tools/profil_uret.c  -lseccomp 
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc  -o bin/ihlal_testi tools/ihlal_testi.c  -lseccomp 
-derleme tamam: 5 program -> bin/
-derleme tamam: 5 program -> bin/
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O2 -g -Isrc  -o bin/arch_testi tools/arch_testi.c  -lseccomp 
+derleme tamam: 6 program -> bin/
+derleme tamam: 6 program -> bin/
+== test/test_arch.sh
+[T23] x32 / i386 ABI ile izinli 'write' cagrisi filtreyi atlatamaz
+  ok   - arch_testi BASARILI
+  ok   - x32 yakalandi (kill)
+  ok   - int 0x80 yakalandi (kill)
+  ok   - SIGSYS handler'i calismadi (yakalanamaz olum)
+  ok   - hicbir yolda cagri calismadi
+  ok   - hicbir yolda atlatma
+  ok   - BPF: mimari kontrolu x86_64 ve yanlis mimari -> KILL_PROCESS
+[T24] profil basligi: arch / surum / libseccomp dogrulamasi
+  ok   - profil libseccomp surumunu yaziyor
+  ok   - uyumlu baslik kabul
+  ok   - arch uyusmazligi -> 5
+  ok   - mesaj arch uyusmazligi
+  ok   - libseccomp major.minor uyusmazligi -> 5
+  ok   - mesaj libseccomp uyusmazligi
+  ok   - yalniz micro farki kabul
+  ok   - surum 999 -> 5
+  ok   - mesaj surum
+  ok   - libseccomp alani bozuk -> 5
+  ok   - --uyusmazligi-yoksay ile arch farki gecer
+  ok   - arch alani yok: uyari ile kabul
+  ok   - uyari yazildi
+  -> 20 kontrol gecti
 == test/test_filtre.sh
 [T5] determinizm: ayni girdi -> ayni .seccomp ve .bpf
   ok   - .seccomp sha256 esit
@@ -63,6 +88,19 @@ derleme tamam: 5 program -> bin/
   ok   - olmayan komut (profilsiz mod) -> 127
   ok   - profil izinli syscall'i ihlal sayilmaz
   -> 21 kontrol gecti
+== test/test_kirilma.sh
+[T25] kill -9 hedefe: sandbox 137 raporlar, zombi/yetim yok, tekrar calisir
+  ok   - cocuk bulundu
+  ok   - sandbox cikis 137
+  ok   - sinyal 9 raporlandi
+  ok   - hedef yok, zombi degil
+  ok   - temizlik sonrasi tekrar calisiyor
+[T26] kill -9 sandbox'a: cocuk yetim kalmaz (PR_SET_PDEATHSIG), say modunda da (EXITKILL)
+  ok   - kill: cocuk de sonlandi
+  ok   - say: cocuk de sonlandi
+[T27] hesap senaryosu: sonuc profilli/profilsiz ayni (CPU kotasi testinin dogruluk olcutu)
+  ok   - hesap ciktisi ayni
+  -> 8 kontrol gecti
 == test/test_olcum.sh
 [T22] olcum.sh: 5 tekrar, CSV biçimi, ozet
   ok   - baslik satiri
@@ -81,7 +119,7 @@ derleme tamam: 5 program -> bin/
   -> 13 kontrol gecti
 == test/test_profil.sh
 [T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)
-  ok   - tablo ayristirma, golden JSON ile ayni
+  ok   - tablo ayristirma, golden JSON ile ayni (libseccomp surum satiri haric)
   ok   - hata sayaci okundu (access hata=1)
 [T2] canli profil: strace -f izi
   ok   - canli profilde execve var
@@ -135,20 +173,21 @@ derleme tamam: 5 program -> bin/
   ok   - NoNewPrivs: 1
   ok   - Seccomp: 2 (filter modu)
   -> 25 kontrol gecti
-test tamam: 5 betik
+test tamam: 7 betik
 make BIN=bin/asan OPT="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer" LDFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" all
 make[1]: Entering directory '/work'
 mkdir -p bin/asan
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -pthread -o bin/asan/hedef src/hedef.c -fsanitize=address,undefined -fno-omit-frame-pointer
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc  -o bin/asan/sandbox src/sandbox.c -fsanitize=address,undefined -fno-omit-frame-pointer -lseccomp 
-cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -o bin/asan/profil tools/profil.c -fsanitize=address,undefined -fno-omit-frame-pointer
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc  -o bin/asan/profil tools/profil.c -fsanitize=address,undefined -fno-omit-frame-pointer
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc  -o bin/asan/profil_uret tools/profil_uret.c -fsanitize=address,undefined -fno-omit-frame-pointer -lseccomp 
 cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc  -o bin/asan/ihlal_testi tools/ihlal_testi.c -fsanitize=address,undefined -fno-omit-frame-pointer -lseccomp 
-derleme tamam: 5 program -> bin/asan/
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc  -o bin/asan/arch_testi tools/arch_testi.c -fsanitize=address,undefined -fno-omit-frame-pointer -lseccomp 
+derleme tamam: 6 program -> bin/asan/
 make[1]: Leaving directory '/work'
 BIN=bin/asan ASAN=1 bash test/test_profil.sh
 [T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)
-  ok   - tablo ayristirma, golden JSON ile ayni
+  ok   - tablo ayristirma, golden JSON ile ayni (libseccomp surum satiri haric)
   ok   - hata sayaci okundu (access hata=1)
 [T2] canli profil: strace -f izi
   ok   - canli profilde execve var

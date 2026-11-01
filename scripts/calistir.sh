@@ -10,18 +10,21 @@ mkdir -p "$CIKTI"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-echo "== 1/4 profil cikar: normal / hata / socket (strace -f, x$TEKRAR)"
+echo "== 1/5 profil cikar: normal / hata / socket (strace -f, x$TEKRAR)"
 for s in normal hata socket; do
     "$BIN/profil" -n "$TEKRAR" -o "$tmp/$s.json" -- "$BIN/hedef" "$s"
 done
 "$BIN/profil" --birlestir -o "$CIKTI/hedef.json" "$tmp/normal.json" "$tmp/hata.json" "$tmp/socket.json"
 
-echo "== 2/4 filtre uret (deterministik)"
+echo "== 2/5 filtre uret (deterministik)"
 "$BIN/profil_uret" "$CIKTI/hedef.json" -o "$CIKTI/hedef.seccomp" --bpf "$CIKTI/hedef.bpf" --ozet
 sha256sum "$CIKTI/hedef.seccomp" "$CIKTI/hedef.bpf"
 
-echo "== 3/4 profille calistir (KILL): hedef tam"
+echo "== 3/5 profille calistir (KILL): hedef tam"
 "$BIN/sandbox" --mod kill --profil "$CIKTI/hedef.seccomp" -- "$BIN/hedef" tam
 
-echo "== 4/4 ihlal: izinsiz unshare, iki mod"
+echo "== 4/5 ihlal: izinsiz unshare, iki mod"
 "$BIN/ihlal_testi" --profil "$CIKTI/hedef.seccomp"
+
+echo "== 5/5 mimari atlatma: x32 ve int 0x80 ile izinli write"
+"$BIN/arch_testi" --profil "$CIKTI/hedef.seccomp"

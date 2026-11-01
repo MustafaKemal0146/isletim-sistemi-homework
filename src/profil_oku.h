@@ -97,6 +97,12 @@ static inline scmp_filter_ctx filtre_kur(const izin_listesi *l, uint32_t varsayi
 {
     scmp_filter_ctx ctx = seccomp_init(varsayilan);
     if (!ctx) return NULL;
+    /* Foreign ABI (x32, i386 via int 0x80) must be fatal for the whole process in
+     * every mode; libseccomp's default there is the weaker KILL_THREAD. */
+    if (seccomp_attr_set(ctx, SCMP_FLTATR_ACT_BADARCH, SCMP_ACT_KILL_PROCESS) < 0) {
+        seccomp_release(ctx);
+        return NULL;
+    }
     for (size_t i = 0; i < l->n; i++) {
         int nr = seccomp_syscall_resolve_name(l->ad[i]);
         if (nr == __NR_SCMP_ERROR) {

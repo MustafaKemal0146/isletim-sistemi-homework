@@ -1,0 +1,34 @@
+== 1/5 profil cikar: normal / hata / socket (strace -f, x3)
+profil: 35 farkli syscall -> /tmp/tmp.MXkUs91Hmj/normal.json
+profil: 23 farkli syscall -> /tmp/tmp.MXkUs91Hmj/hata.json
+profil: 30 farkli syscall -> /tmp/tmp.MXkUs91Hmj/socket.json
+profil: 45 farkli syscall -> profiller/hedef.json
+== 2/5 filtre uret (deterministik)
+profil_uret: 45 izinli -> profiller/hedef.seccomp
+toplam_x86_64=368 izinli=45 kapatilan=323 oran=87.8%
+6ac7efd2c8462c38a5a43143068be7cb051a2fbace9164bdf615d0528e21eab1  profiller/hedef.seccomp
+8de743bff8b0a270d86871e033d6b3306bcff172668bee65f3b7d77d545bbcd0  profiller/hedef.bpf
+== 3/5 profille calistir (KILL): hedef tam
+[sandbox] profil=profiller/hedef.seccomp izinli=45
+hedef: open basarisiz: No such file or directory
+hedef: unlink basarisiz: No such file or directory
+hedef: connect basarisiz: Connection refused
+hedef: normal tamam dosya_sum=be239dc5 bellek=261 thread_toplam=3000
+hedef: hata tamam hatalar=2,2,111
+hedef: socket tamam mesaj=dogru
+== 4/5 ihlal: izinsiz unshare, iki mod
+[ihlal] mod=kill syscall=unshare (nr=272)
+[ihlal]   sonuc: sinyal 31 (Bad system call) ile sonlandi
+[ihlal]   beklenen davranis: EVET
+[ihlal] mod=errno syscall=unshare (nr=272)
+  [cocuk] syscall dondu: ret=-1 errno=1 (Operation not permitted)
+[ihlal]   sonuc: cikis kodu 42
+[ihlal]   beklenen davranis: EVET
+[ihlal] genel: BASARILI
+== 5/5 mimari atlatma: x32 ve int 0x80 ile izinli write
+[arch] mod=kill  yol=x32          -> sinyal 31 (Bad system call)    cagri_calisti=hayir handler_calisti=hayir : YAKALANDI
+[arch] mod=kill  yol=int80/i386   -> sinyal 31 (Bad system call)    cagri_calisti=hayir handler_calisti=hayir : YAKALANDI
+[arch] mod=kill  yol=x32+handler  -> sinyal 31 (Bad system call)    cagri_calisti=hayir handler_calisti=hayir : YAKALANDI
+[arch] mod=errno yol=x32          -> sinyal 31 (Bad system call)    cagri_calisti=hayir handler_calisti=hayir : YAKALANDI
+[arch] mod=errno yol=int80/i386   -> sinyal 31 (Bad system call)    cagri_calisti=hayir handler_calisti=hayir : YAKALANDI
+[arch] genel: BASARILI (hicbir ABI yolu filtreyi atlatamadi)

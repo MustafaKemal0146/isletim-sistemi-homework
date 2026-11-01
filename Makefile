@@ -22,10 +22,10 @@ else
 endif
 
 BIN      ?= bin
-PROGRAMLAR := $(BIN)/hedef $(BIN)/sandbox $(BIN)/profil $(BIN)/profil_uret $(BIN)/ihlal_testi
+PROGRAMLAR := $(BIN)/hedef $(BIN)/sandbox $(BIN)/profil $(BIN)/profil_uret $(BIN)/ihlal_testi $(BIN)/arch_testi
 HDR      := src/ortak.h src/json_mini.h src/profil_oku.h
 
-.PHONY: all kontrol asan test surum profil temiz
+.PHONY: all kontrol asan test surum profil kirilma temiz
 
 all: kontrol $(PROGRAMLAR)
 	@echo "derleme tamam: $(words $(PROGRAMLAR)) program -> $(BIN)/"
@@ -45,12 +45,15 @@ $(BIN)/sandbox: src/sandbox.c $(HDR) | $(BIN)
 	$(CC) $(CFLAGS) $(SECCOMP_CFLAGS) -o $@ $< $(LDFLAGS) $(SECCOMP_LIBS)
 
 $(BIN)/profil: tools/profil.c $(HDR) | $(BIN)
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SECCOMP_CFLAGS) -o $@ $< $(LDFLAGS)
 
 $(BIN)/profil_uret: tools/profil_uret.c $(HDR) | $(BIN)
 	$(CC) $(CFLAGS) $(SECCOMP_CFLAGS) -o $@ $< $(LDFLAGS) $(SECCOMP_LIBS)
 
 $(BIN)/ihlal_testi: tools/ihlal_testi.c $(HDR) | $(BIN)
+	$(CC) $(CFLAGS) $(SECCOMP_CFLAGS) -o $@ $< $(LDFLAGS) $(SECCOMP_LIBS)
+
+$(BIN)/arch_testi: tools/arch_testi.c $(HDR) | $(BIN)
 	$(CC) $(CFLAGS) $(SECCOMP_CFLAGS) -o $@ $< $(LDFLAGS) $(SECCOMP_LIBS)
 
 # ASan/UBSan build in bin/asan; runs only the tests that make sense under the
@@ -71,6 +74,10 @@ test: all
 # End-to-end pipeline: profile -> filter -> sandboxed run
 profil: all
 	bash scripts/calistir.sh
+
+# Break tests (F5): kill -9, disk full (tmpfs), MemoryMax, CPUQuota -> olcum/kirilma-*.txt
+kirilma: all
+	for t in kill9 disk bellek cpu; do bash tools/kirilma.sh $$t | tee olcum/kirilma-$$t.txt; done
 
 surum:
 	@uname -a

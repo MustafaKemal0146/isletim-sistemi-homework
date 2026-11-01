@@ -4,7 +4,7 @@ source "$(dirname "$0")/lib.sh"
 
 echo "[T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)"
 "$BIN/profil" -o "$TMP/g.json" --strace-girdi "$KOK/test/veri/strace-ornek.txt" 2>/dev/null
-esit "tablo ayristirma, golden JSON ile ayni" "$(sha256sum <"$KOK/test/veri/beklenen.json")" "$(sha256sum <"$TMP/g.json")"
+esit "tablo ayristirma, golden JSON ile ayni (libseccomp surum satiri haric)" "$(grep -v '"libseccomp"' "$KOK/test/veri/beklenen.json" | sha256sum)" "$(grep -v '"libseccomp"' "$TMP/g.json" | sha256sum)"
 icerir "hata sayaci okundu (access hata=1)" "$(cat "$TMP/g.json")" '"ad": "access", "cagri": 1, "hata": 1'
 
 echo "[T2] canli profil: strace -f izi"

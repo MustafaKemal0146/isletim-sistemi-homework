@@ -1,0 +1,9 @@
+# rss_dogrula 2026-11-01 - 5 tekrar
+A) /usr/bin/time -v bin/hedef tam  [KB]:
+10608 10608 10736 10736 10736
+B) sandbox --mod yok --olcum -- hedef tam  [KB]:
+10608 10608 10608 10736 10608
+C) sandbox --mod yok -- /bin/true (sandbox'in kendi ru_maxrss'i) [KB]:
+1256 1256 1256
+D) cgroup memory.peak, systemd-run --user --scope [bayt]:
+11153408 10522624 10899456

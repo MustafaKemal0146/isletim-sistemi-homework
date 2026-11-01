@@ -1,0 +1,44 @@
+################ ONCE (sandbox f17ce9b: PR_SET_PDEATHSIG yok) — yalnizca B bolumu fark eder ################
+### B) sandbox surecinin kendisine kill -9 (cocuk yetim kalir mi?)
+$ sandbox ... -- hedef uzun 30 &      # sandbox pid=104036, hedef pid=104038
+$ kill -9 104036
+sandbox cikis kodu: 137 (137)
+1 sn sonra hedef (pid 104038) durumu:
+    PID    PPID STAT COMMAND
+ 104038    1421 S    hedef
+SONUC: cocuk YETIM kaldi ve calismaya devam ediyor
+kalan hedef sureci : 0
+
+
+################ SONRA (PR_SET_PDEATHSIG eklendi) — tam kosu ################
+# kirilma-kill9 — 2026-11-01 21:27:28  (komutlar ve ciktilar)
+
+### A) calisan hedefe (cocuk surec) kill -9
+$ sandbox ... -- hedef uzun 30 &      # sandbox pid=112635, hedef pid=112637
+    PID    PPID STAT COMMAND
+ 112635  112631 S    sandbox
+ 112637  112635 S    hedef
+$ kill -9 112637
+sandbox cikis kodu: 137   (beklenen 137 = 128+SIGKILL)
+--- sandbox stderr:
+[sandbox] profil=/home/ara/isletim-sistemi-homework/profiller/hedef.seccomp izinli=45
+[sandbox] cocuk sinyal ile sonlandi: 9 (Killed)
+--- hedef stdout (olmeden once ne yazdi):
+hedef: uzun tik 0
+hedef: uzun tik 1
+zombi surec sayisi : 0
+kalan hedef sureci : 0
+
+### A') temizlik sonrasi tekrar calisiyor mu?
+cikis kodu: 0 (beklenen 0)
+
+### B) sandbox surecinin kendisine kill -9 (cocuk yetim kalir mi?)
+$ sandbox ... -- hedef uzun 30 &      # sandbox pid=112662, hedef pid=112664
+$ kill -9 112662
+sandbox cikis kodu: 137 (137)
+1 sn sonra hedef (pid 112664) durumu:
+SONUC: cocuk de sonlandi (yetim yok)
+kalan hedef sureci : 0
+
+### C) SAY modu: izleyici (sandbox) olurse tracee ne olur (PTRACE_O_EXITKILL)
+say modunda kalan hedef sureci: 0  (0 beklenir)

@@ -31,7 +31,7 @@ yeni program başlatmak, mount etmek, namespace açmak gibi — yapamaz.
 - İhlal dört modda gösterilir: KILL (SIGSYS), ERRNO (EPERM), LOG (kernel audit) ve **SAY**
   (`SCMP_ACT_TRACE` + ptrace ile engellenen çağrıları sayıp adlandıran, root gerektirmeyen mod).
 - Neden başarılı oldu: libseccomp olgun, çekirdek desteği makinede doğrulandı; kapsam dar ve her
-  davranış testle sabitlendi (23 test grubu, 89 kontrol).
+  davranış testle sabitlendi (28 test grubu, 117 kontrol).
 
 ## 4. Kimin umurunda? Başarılı olursa ne fark eder?
 - Servis/daemon yazanlar için dakikalar içinde programa özel dar profil.

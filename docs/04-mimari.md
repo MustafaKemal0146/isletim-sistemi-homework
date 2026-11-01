@@ -7,7 +7,7 @@ bin/hedef ──strace -f──▶ bin/profil ──▶ profiller/hedef.json (bi
                                             │
                                   bin/profil_uret (libseccomp)
                                             ▼
-                    profiller/hedef.seccomp (metin)   profiller/hedef.bpf (53 talimat)
+                    profiller/hedef.seccomp (metin)   profiller/hedef.bpf (52 talimat)
                                             │
         bin/sandbox --mod kill|errno|log|say|yok --profil ... -- komut
                   fork ─▶ [cocuk] prctl(NO_NEW_PRIVS) ─▶ seccomp_load ─▶ execve(komut)
@@ -44,24 +44,33 @@ saymak için) kullanılır.
 
 ## BPF nasıl çalışıyor? (gerçek `profiller/hedef.bpf`'den)
 Çekirdek her syscall girişinde, süreçteki filtreyi `struct seccomp_data {nr, arch, instruction_pointer, args[6]}`
-üzerinde çalıştırır; program klasik BPF'tir (8 baytlık talimat: `code, jt, jf, k`). Üretilen 424 baytlık
-program 53 talimattır:
+üzerinde çalıştırır; program klasik BPF'tir (8 baytlık talimat: `code, jt, jf, k`). Üretilen 416 baytlık
+program 52 talimattır (Python ile çözülmüş gerçek çıktı):
 ```
 00: ld  [4]            ; A = seccomp_data.arch
-01: jeq #0xc000003e    ; x86_64 degilse -> 52'ye atla (KILL)         (jf=50)
+01: jeq #0xc000003e    ; x86_64 degilse 51'e atla (jf=49) -> KILL_PROCESS
 02: ld  [0]            ; A = seccomp_data.nr
 03: jge #0x40000000    ; nr >= 0x40000000 (x32 ABI araligi) ise 04'e, degilse 05'e atla (jf=1)
-04: jeq #0xffffffff    ; nr == -1 ise 05'e dus (hicbir kiyas eslesmez -> 50 KILL_PROCESS); degilse 52'ye atla (KILL_THREAD)
-05: jeq #0   -> jt=45  ; nr == read(0)   ise 51'e (ALLOW)
-06: jeq #1   -> jt=44  ; nr == write(1)  ise 51'e (ALLOW)
-07: jeq #3 ... (sirali nr karsilastirmalari, 45 adet)
-50: ret 0x80000000     ; SECCOMP_RET_KILL_PROCESS
-51: ret 0x7fff0000     ; SECCOMP_RET_ALLOW
-52: ret 0x00000000     ; SECCOMP_RET_KILL_THREAD (yanlis mimari)
+04: jeq #0xffffffff    ; nr == -1 ise 05'e dus (hicbir kiyas eslesmez -> 51); degilse 51'e atla (jf=46)
+05: jeq #0   -> jt=44  ; nr == read(0)   ise 50'ye (ALLOW)
+06: jeq #1   -> jt=43  ; nr == write(1)  ise 50'ye (ALLOW)
+07: jeq #3 ...         ; (sirali nr karsilastirmalari, 45 adet; son: 0x1b3 = clone3)
+49: jeq #0x1b3 jt=0 jf=1
+50: ret 0x7fff0000     ; SECCOMP_RET_ALLOW
+51: ret 0x80000000     ; SECCOMP_RET_KILL_PROCESS (varsayilan eylem VE yanlis mimari)
 ```
-Yani: **önce mimari doğrulanır** (i386/x32 `int 0x80` ile filtre atlatma engellenir), sonra çağrı numarası
+Yani: **önce mimari doğrulanır** (i386 `int 0x80` ve x32 ile filtre atlatma engellenir), sonra çağrı numarası
 izin listesiyle karşılaştırılır; eşleşme yoksa varsayılan eylem döner. Eylem kodunun üst 16 biti türü,
 alt 16 biti verisini taşır (`SCMP_ACT_ERRNO(EPERM)` = `0x00050001`).
+
+**Mimari atlatma testi ve bir sertleştirme (`tools/arch_testi.c`, test T23).** İzinli bir çağrıyı (`write`)
+başka bir ABI üzerinden yapma denemeleri: `syscall(0x40000000 + SYS_write)` (x32) ve `int $0x80` (i386).
+Filtre hepsini yakaladı (marker hiçbir yolda çıktıya ulaşmadı). Yine de ilk sürümde libseccomp'un yanlış-mimari
+varsayılanı **`SECCOMP_RET_KILL_THREAD` (0)** idi; bu eylem process'i değil yalnızca thread'i öldürür ve
+(çekirdek sürümüne bağlı olarak) SIGSYS yakalanabilir. `filtre_kur()` artık `SCMP_FLTATR_ACT_BADARCH =
+KILL_PROCESS` ayarlar; bu yüzden yukarıdaki listede 52. talimat kaldırıldı (53 → 52) ve `.bpf` sha256 değişti
+(`be5302bd…` → `8de743bf…`; `.seccomp` aynı kaldı). ERRNO modunda yanlış-mimari çağrı EPERM değil, süreç ölümüdür
+(bilinçli: başka ABI kullanan bir hedef zaten şüphelidir).
 
 ## Yükleme sırası (sandbox)
 1. `prctl(PR_SET_NO_NEW_PRIVS, 1)` — bunsuz root olmayan süreç filtre yükleyemez; ayrıca `execve` ile
@@ -69,6 +78,10 @@ alt 16 biti verisini taşır (`SCMP_ACT_ERRNO(EPERM)` = `0x00050001`).
 2. `seccomp_load()` — filtre tüm sonraki çağrılara (ve thread/fork çocuklarına) uygulanır.
 3. `execvp()` — `execve` da profildedir (strace izi `execve` ile başlar). Test T17, hedefte
    `NoNewPrivs: 1` ve `Seccomp: 2` değerlerini gösterir.
+
+`PR_SET_PDEATHSIG(SIGKILL)` çocukta ilk iş olarak ayarlanır: sandbox `kill -9` ile öldürülürse komut yetim
+kalmaz (düzeltme öncesi kalıyordu; `olcum/kirilma-kill9.txt` önce/sonra). SAY modunda aynı garantiyi
+`PTRACE_O_EXITKILL` verir.
 
 Sandbox'ın kendi çocuğunun hata yolu için tek istisna: `exit_group` profilde yoksa eklenir ve bu
 stderr'e yazılır (aksi halde boş profille ERRNO modunda çocuk çıkış yapamayıp SIGSEGV ile çöküyordu —
@@ -95,8 +108,8 @@ kodu ve anlamlı mesaj (test grubu T18–T21). `system()` hiçbir yerde kullanı
 - Dinamik profil yalnızca çalışan yolları kapsar (kapsama = senaryolar).
 - x86_64'e özgü (SAY modu `user_regs_struct` kullanır).
 - ASan/UBSan'lı hedef ek syscall kullanır; sandbox altında sanitizer'lı hedef çalıştırılmaz. `make asan` yalnızca profil/filtre/hata testlerini kapsar; SAY ptrace döngüsü sanitizer'sız.
-- x32/yanlış-mimari filtre atlatması için henüz test yok.
-- `arch`/`surum` JSON alanları doğrulanmaz.
+- Profil JSON başlığı doğrulanır: `arch` ≠ `uname -m` veya libseccomp major.minor farkı → hata (çıkış 5); micro farkı kabul. `--uyusmazligi-yoksay` ile bilinçli geçilebilir.
+- Kırılma testleri: `tools/kirilma.sh` (bkz. rapor/final-rapor.md §6).
 - 368, libseccomp 2.5.5 tablosuna göredir (çekirdeğin tüm syscall kümesi değil).
-- `ru_maxrss` fork'tan miras kalan yüksek su çizgisini içerebilir (bkz. 05).
+- `ru_maxrss` bağımsız yöntemlerle doğrulandı (bkz. 05, `olcum/2026-11-01-rss.txt`).
 - Bu bir **sertleştirme** aracıdır; seccomp tek başına izolasyon (namespace/cgroup) yerine geçmez.

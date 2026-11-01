@@ -1,4 +1,28 @@
-derleme tamam: 5 program -> bin/
+derleme tamam: 6 program -> bin/
+== test/test_arch.sh
+[T23] x32 / i386 ABI ile izinli 'write' cagrisi filtreyi atlatamaz
+  ok   - arch_testi BASARILI
+  ok   - x32 yakalandi (kill)
+  ok   - int 0x80 yakalandi (kill)
+  ok   - SIGSYS handler'i calismadi (yakalanamaz olum)
+  ok   - hicbir yolda cagri calismadi
+  ok   - hicbir yolda atlatma
+  ok   - BPF: mimari kontrolu x86_64 ve yanlis mimari -> KILL_PROCESS
+[T24] profil basligi: arch / surum / libseccomp dogrulamasi
+  ok   - profil libseccomp surumunu yaziyor
+  ok   - uyumlu baslik kabul
+  ok   - arch uyusmazligi -> 5
+  ok   - mesaj arch uyusmazligi
+  ok   - libseccomp major.minor uyusmazligi -> 5
+  ok   - mesaj libseccomp uyusmazligi
+  ok   - yalniz micro farki kabul
+  ok   - surum 999 -> 5
+  ok   - mesaj surum
+  ok   - libseccomp alani bozuk -> 5
+  ok   - --uyusmazligi-yoksay ile arch farki gecer
+  ok   - arch alani yok: uyari ile kabul
+  ok   - uyari yazildi
+  -> 20 kontrol gecti
 == test/test_filtre.sh
 [T5] determinizm: ayni girdi -> ayni .seccomp ve .bpf
   ok   - .seccomp sha256 esit
@@ -49,6 +73,19 @@ derleme tamam: 5 program -> bin/
   ok   - olmayan komut (profilsiz mod) -> 127
   ok   - profil izinli syscall'i ihlal sayilmaz
   -> 21 kontrol gecti
+== test/test_kirilma.sh
+[T25] kill -9 hedefe: sandbox 137 raporlar, zombi/yetim yok, tekrar calisir
+  ok   - cocuk bulundu
+  ok   - sandbox cikis 137
+  ok   - sinyal 9 raporlandi
+  ok   - hedef yok, zombi degil
+  ok   - temizlik sonrasi tekrar calisiyor
+[T26] kill -9 sandbox'a: cocuk yetim kalmaz (PR_SET_PDEATHSIG), say modunda da (EXITKILL)
+  ok   - kill: cocuk de sonlandi
+  ok   - say: cocuk de sonlandi
+[T27] hesap senaryosu: sonuc profilli/profilsiz ayni (CPU kotasi testinin dogruluk olcutu)
+  ok   - hesap ciktisi ayni
+  -> 8 kontrol gecti
 == test/test_olcum.sh
 [T22] olcum.sh: 5 tekrar, CSV biçimi, ozet
   ok   - baslik satiri
@@ -67,7 +104,7 @@ derleme tamam: 5 program -> bin/
   -> 13 kontrol gecti
 == test/test_profil.sh
 [T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)
-  ok   - tablo ayristirma, golden JSON ile ayni
+  ok   - tablo ayristirma, golden JSON ile ayni (libseccomp surum satiri haric)
   ok   - hata sayaci okundu (access hata=1)
 [T2] canli profil: strace -f izi
   ok   - canli profilde execve var
@@ -121,4 +158,4 @@ derleme tamam: 5 program -> bin/
   ok   - NoNewPrivs: 1
   ok   - Seccomp: 2 (filter modu)
   -> 25 kontrol gecti
-test tamam: 5 betik
+test tamam: 7 betik

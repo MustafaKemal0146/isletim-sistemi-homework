@@ -5,18 +5,19 @@
 cikis kodu: 159 (128+31 = SIGSYS)
 
 == 2) strace kaniti (root gerekmez)
-76617 unshare(0)                        = 272
-76617 +++ killed by SIGSYS +++
-76616 <... wait4 resumed>[{WIFSIGNALED(s) && WTERMSIG(s) == SIGSYS}], 0, {ru_utime={tv_sec=0, tv_usec=0}, ru_stime={tv_s
-76616 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=76617, si_uid=1000, si_status=SIGSYS, si_utime=0, si_sti
-76616 write(2, "[sandbox] cocuk sinyal ile sonla"..., 58) = 58
-76616 write(2, "[sandbox] SIGSYS = izin listesin"..., 128) = 128
+109476 unshare(0)                       = 272
+109476 +++ killed by SIGSYS +++
+109475 <... wait4 resumed>[{WIFSIGNALED(s) && WTERMSIG(s) == SIGSYS}], 0, {ru_utime={tv_sec=0, tv_usec=870}, ru_stime={t
+109475 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=109476, si_uid=1000, si_status=SIGSYS, si_utime=0, si_s
+109475 write(2, "[sandbox] cocuk sinyal ile sonla"..., 58) = 58
+109475 write(2, "[sandbox] SIGSYS = izin listesin"..., 128) = 128
 
 == 3) dmesg (kernel.dmesg_restrict=1)
 dmesg okunamadi: dmesg: read kernel buffer failed: Operation not permitted
 
-== 4) journalctl -k --since '2026-11-01 20:48:40'
-Kas 01 20:48:41 kemal kernel: audit: type=1326 audit(1793555321.401:355): uid=1000 pid=76617 comm="hedef" exe="/home/ara/isletim-sistemi-homework/bin/hedef" sig=31 arch=c000003e syscall=272 compat=0 ip=0x7e2efe12752d code=0x80000000
+== 4) journalctl -k --since '2026-11-01 21:25:19'
+type=1326 satiri yok. journalctl ciktisi:
+-- No entries --
 
 == 5) ausearch / auditd
 ausearch kurulu degil

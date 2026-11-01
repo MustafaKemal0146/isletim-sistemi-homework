@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include "json_mini.h"
@@ -19,8 +20,41 @@
 
 static int kullanim(void)
 {
-    fprintf(stderr, "kullanim: profil_uret girdi.json... -o cikti.seccomp [--bpf cikti.bpf] [--ozet]\n");
+    fprintf(stderr, "kullanim: profil_uret girdi.json... -o cikti.seccomp [--bpf cikti.bpf] [--ozet] [--uyusmazligi-yoksay] [--uyusmazligi-yoksay]\n");
     return CIKIS_KULLANIM;
+}
+
+/* Compare a profile's header with this machine / libseccomp. 0 ok, -1 mismatch. */
+static int meta_dogrula(const js_meta *m, const char *dosya)
+{
+    struct utsname un;
+    struct scmp_version const *v = seccomp_version();
+    char mevcut[32];
+    snprintf(mevcut, sizeof mevcut, "%u.%u.%u", v->major, v->minor, v->micro);
+
+    if (m->surum_var && m->surum != 1) {
+        fprintf(stderr, "profil_uret: '%s': profil surumu %ld desteklenmiyor (beklenen 1)\n", dosya, m->surum);
+        return -1;
+    }
+    if (!m->arch_var) {
+        fprintf(stderr, "profil_uret: UYARI: '%s' arch alani yok; dogrulanamadi\n", dosya);
+    } else if (uname(&un) == 0 && strcmp(m->arch, un.machine) != 0) {
+        fprintf(stderr, "profil_uret: '%s': arch uyusmazligi: profil '%s', bu makine '%s'\n", dosya, m->arch, un.machine);
+        return -1;
+    }
+    if (m->lib_var) {
+        unsigned ma = 0, mi = 0, mc = 0;
+        if (sscanf(m->libseccomp, "%u.%u.%u", &ma, &mi, &mc) != 3) {
+            fprintf(stderr, "profil_uret: '%s': libseccomp alani bozuk: '%s'\n", dosya, m->libseccomp);
+            return -1;
+        }
+        if (ma != v->major || mi != v->minor) {
+            fprintf(stderr, "profil_uret: '%s': libseccomp uyusmazligi: profil %s, calisan %s (syscall tablolari farkli olabilir)\n",
+                    dosya, m->libseccomp, mevcut);
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /* Number of syscalls libseccomp knows for the native arch (the "attack surface"). */
@@ -38,12 +72,13 @@ int main(int argc, char **argv)
 {
     const char *cikti = NULL, *bpf = NULL;
     const char *girdiler[64];
-    int ng = 0, ozet = 0;
+    int ng = 0, ozet = 0, yoksay = 0;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-o") && i + 1 < argc) cikti = argv[++i];
         else if (!strcmp(argv[i], "--bpf") && i + 1 < argc) bpf = argv[++i];
         else if (!strcmp(argv[i], "--ozet")) ozet = 1;
+        else if (!strcmp(argv[i], "--uyusmazligi-yoksay")) yoksay = 1;
         else if (argv[i][0] == '-') return kullanim();
         else if (ng < 64) girdiler[ng++] = argv[i];
         else { fprintf(stderr, "profil_uret: en fazla 64 girdi dosyasi\n"); return CIKIS_KULLANIM; }
@@ -62,13 +97,19 @@ int main(int argc, char **argv)
             rc = CIKIS_PROFIL;
             goto cik2;
         }
-        if (js_profil_oku(m, n, &l, hata, sizeof hata) < 0) {
+        js_meta meta;
+        memset(&meta, 0, sizeof meta);
+        if (js_profil_oku(m, n, &l, &meta, hata, sizeof hata) < 0) {
             fprintf(stderr, "profil_uret: '%s' bozuk JSON: %s\n", girdiler[i], hata);
             free(m);
             rc = CIKIS_PROFIL;
             goto cik2;
         }
         free(m);
+        if (meta_dogrula(&meta, girdiler[i]) < 0 && !yoksay) {
+            rc = CIKIS_PROFIL;
+            goto cik2;
+        }
     }
     sc_sirala(&l);
 

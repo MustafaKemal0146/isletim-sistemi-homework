@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
+#include <seccomp.h> /* version macros only; profil does not link libseccomp */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -146,7 +148,10 @@ static int yaz(const char *yol, const sc_liste *l, const char *kaynak)
     }
     long toplam = 0;
     for (size_t i = 0; i < l->n; i++) toplam += l->k[i].cagri;
-    fprintf(f, "{\n  \"surum\": 1,\n  \"arch\": \"x86_64\",\n  \"kaynak\": \"");
+    struct utsname un;
+    if (uname(&un) < 0) snprintf(un.machine, sizeof un.machine, "bilinmiyor");
+    fprintf(f, "{\n  \"surum\": 1,\n  \"arch\": \"%s\",\n  \"libseccomp\": \"%d.%d.%d\",\n  \"kaynak\": \"",
+            un.machine, SCMP_VER_MAJOR, SCMP_VER_MINOR, SCMP_VER_MICRO);
     for (const char *c = kaynak; *c; c++) {
         if (*c == '"' || *c == '\\') fputc('\\', f);
         if ((unsigned char)*c >= 0x20) fputc(*c, f);
@@ -195,7 +200,7 @@ int main(int argc, char **argv)
                 rc = CIKIS_PROFIL;
                 goto cik;
             }
-            if (js_profil_oku(m, n, &l, hata, sizeof hata) < 0) {
+            if (js_profil_oku(m, n, &l, NULL, hata, sizeof hata) < 0) {
                 fprintf(stderr, "profil: '%s' bozuk JSON: %s\n", argv[i], hata);
                 free(m);
                 rc = CIKIS_PROFIL;

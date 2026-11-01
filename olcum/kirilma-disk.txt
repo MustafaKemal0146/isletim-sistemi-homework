@@ -1,0 +1,25 @@
+# kirilma-disk — 2026-11-01 21:27:35
+Gercek disk doldurulmaz: 20 MB tmpfs, user+mount namespace icinde (unshare -Urm).
+$ df -h /tmp/tmp.eYLiaXgMDQ/mnt  (onceki)
+tmpfs            20M     0   20M   0% /tmp/tmp.eYLiaXgMDQ/mnt
+$ sandbox --mod kill --profil hedef.seccomp -- hedef disk /tmp/tmp.eYLiaXgMDQ/mnt
+[sandbox] profil=/home/ara/isletim-sistemi-homework/profiller/hedef.seccomp izinli=45
+hedef: disk dolu: write basarisiz: No space left on device (errno=28), yazilan=20480 KB
+hedef: gecici dosya silindi, temiz cikis
+cikis kodu: 3   (3 = CIKIS_SISTEM: tanimli hata, sinyal yok)
+dolgu.bin kaldi mi: 0 dosya
+$ df -h /tmp/tmp.eYLiaXgMDQ/mnt  (sonraki)
+tmpfs            20M     0   20M   0% /tmp/tmp.eYLiaXgMDQ/mnt
+
+--- ayni tmpfs'i elle doldurup tekrar deneme (dolu disk uzerinde acilis davranisi)
+20971520 bytes (21 MB, 20 MiB) copied, 0.00555619 s, 3.8 GB/s
+[sandbox] profil=/home/ara/isletim-sistemi-homework/profiller/hedef.seccomp izinli=45
+hedef: disk dolu: write basarisiz: No space left on device (errno=28), yazilan=0 KB
+hedef: gecici dosya silindi, temiz cikis
+cikis kodu: 3
+--- yer acildiktan sonra tekrar:
+hedef: disk dolu: write basarisiz: No space left on device (errno=28), yazilan=20480 KB
+hedef: gecici dosya silindi, temiz cikis
+cikis kodu: 3
+unshare cikis: 0
+gercek diskte etkisi: 86G bos (degismedi)

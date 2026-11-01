@@ -61,8 +61,11 @@ static double simdi_ms(void)
 }
 
 /* Child side: runs between fork and exec. Never returns. */
-static void cocuk(enum ihlal_modu mod, scmp_filter_ctx ctx, char *const *komut)
+static void cocuk(enum ihlal_modu mod, scmp_filter_ctx ctx, char *const *komut, pid_t ana)
 {
+    /* If the sandbox itself is killed (kill -9), the command must not survive as an orphan. */
+    if (prctl(PR_SET_PDEATHSIG, SIGKILL) != 0) _exit(CIKIS_SISTEM);
+    if (getppid() != ana) _exit(CIKIS_SISTEM); /* parent died before prctl took effect */
     if (mod == MOD_SAY) {
         if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0) _exit(CIKIS_SISTEM);
         raise(SIGSTOP); /* parent sets ptrace options, then resumes us */
@@ -163,9 +166,10 @@ int main(int argc, char **argv)
     memset(&ru, 0, sizeof ru);
 
     double t0 = simdi_ms();
+    pid_t ana_pid = getpid();
     pid_t pid = fork();
     if (pid < 0) { perror("fork"); return CIKIS_SISTEM; }
-    if (pid == 0) cocuk(mod, ctx, komut);
+    if (pid == 0) cocuk(mod, ctx, komut, ana_pid);
 
     if (mod == MOD_SAY) {
         if (izle(pid, &durum, &ru, sayac) < 0) {
