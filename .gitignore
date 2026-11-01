@@ -17,3 +17,6 @@ strace.out*
 *.swp
 .DS_Store
 __pycache__/
+
+# rootless libseccomp-dev (scripts/kur-rootsuz.sh)
+.deps/
