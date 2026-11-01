@@ -1,0 +1,78 @@
+make BIN=bin/asan OPT="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer" LDFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" all
+make[1]: Entering directory '/home/ara/isletim-sistemi-homework'
+mkdir -p bin/asan
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -pthread -o bin/asan/hedef src/hedef.c -fsanitize=address,undefined -fno-omit-frame-pointer
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -I.deps/usr/include -o bin/asan/sandbox src/sandbox.c -fsanitize=address,undefined -fno-omit-frame-pointer .deps/usr/lib/x86_64-linux-gnu/libseccomp.a
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -o bin/asan/profil tools/profil.c -fsanitize=address,undefined -fno-omit-frame-pointer
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -I.deps/usr/include -o bin/asan/profil_uret tools/profil_uret.c -fsanitize=address,undefined -fno-omit-frame-pointer .deps/usr/lib/x86_64-linux-gnu/libseccomp.a
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra -Werror -Wshadow -Wconversion -Wpedantic -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -I.deps/usr/include -o bin/asan/ihlal_testi tools/ihlal_testi.c -fsanitize=address,undefined -fno-omit-frame-pointer .deps/usr/lib/x86_64-linux-gnu/libseccomp.a
+derleme tamam: 5 program -> bin/asan/
+make[1]: Leaving directory '/home/ara/isletim-sistemi-homework'
+BIN=bin/asan ASAN=1 bash test/test_profil.sh
+[T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)
+  ok   - tablo ayristirma, golden JSON ile ayni
+  ok   - hata sayaci okundu (access hata=1)
+[T2] canli profil: strace -f izi
+  ok   - canli profilde execve var
+  ok   - canli profilde write var
+  ok   - canli profilde openat var
+  ok   - canli profilde mmap var
+  ok   - canli profilde clone3 var
+  ok   - canli profilde exit_group var
+  ok   - canli profilde exit var
+[T3] -c tablosu exit_group'u kacirir, iz kacirmaz (bilinen sinir, GERCEK strace -c kosusuyla)
+  ok   - canli -c tablosunda exit_group yok
+  ok   - ayni kosunun tam izinde exit_group var
+[T4] birlestirme: birlesim, alfabetik sira, sayaclar toplanir
+  ok   - adlar sirali ve tekrarsiz
+  ok   - sayaclar toplandi (read 3+4=7, hata 1+2=3)
+  ok   - toplam_cagri 9
+  ok   - hata senaryosundan connect geldi
+  -> 15 kontrol gecti
+BIN=bin/asan ASAN=1 bash test/test_filtre.sh
+[T5] determinizm: ayni girdi -> ayni .seccomp ve .bpf
+  ok   - .seccomp sha256 esit
+  ok   - .bpf sha256 esit
+[T6] girdi sirasindan bagimsiz
+  ok   - farkli girdi sirasi ayni cikti
+[T7] bicim: baslik, izinli sayisi satirlarla tutarli
+  ok   - ilk satir baslik
+  ok   - # izinli sayisi = izin satirlari
+  ok   - izin satirlari sirali
+[T8] bilinmeyen syscall adi reddedilir (sessizce atlanmaz)
+  ok   - bilinmeyen ad -> cikis 5
+  ok   - hata mesaji adi soyluyor
+[T9] --ozet: kapatilan syscall sayisi
+  ok   - izinli = .seccomp satir sayisi
+  ok   - kapatilan = toplam - izinli
+  ok   - toplam syscall makul (>300)
+[T9b] uzun anahtar ve tam sayi olmayan sayac
+  ok   - uzun kok anahtari kabul
+  ok   - 1e3 sayaci reddedilir
+  ok   - tasan sayac reddedilir
+  ok   - bilinmeyen ad sonda -> 5 (sizinti yolu)
+  -> 15 kontrol gecti
+BIN=bin/asan ASAN=1 bash test/test_hata.sh
+[T18] bozuk JSON
+  ok   - kesik JSON -> 5
+  ok   - mesaj 'bozuk JSON'
+  ok   - JSON olmayan dosya -> 5
+  ok   - syscalls alani yok -> 5
+  ok   - gecersiz syscall adi -> 5
+  ok   - belge sonunda fazlalik -> 5
+  ok   - birlestir bozuk girdiyi reddeder
+[T19] eksik dosya / kullanim
+  ok   - olmayan JSON -> 5
+  ok   - profil_uret argumansiz -> 2
+  ok   - sandbox --profil olmadan -> 2
+  ok   - sandbox gecersiz mod -> 2
+  ok   - olmayan .seccomp -> 5
+  ok   - basliksiz .seccomp -> 5
+  ok   - bozuk satirli .seccomp -> 5
+[T20] bos profil: hicbir sey izinli degil
+  ok   - bos profil 0 izinli
+[T21] komut bulunamadi
+  ok   - olmayan komut (profilsiz mod) -> 127
+  ok   - profil izinli syscall'i ihlal sayilmaz
+  -> 17 kontrol gecti
+asan/ubsan: temiz

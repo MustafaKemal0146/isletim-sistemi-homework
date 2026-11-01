@@ -7,6 +7,7 @@ P="$TMP/hedef.seccomp"
 echo "[T10] izinli calisma: profille cikti profilsizle ayni"
 BAS="$("$BIN/hedef" tam 2>/dev/null)"
 cikis "KILL modunda hedef tam basarili" 0 "$BIN/sandbox" --mod kill --profil "$P" -- "$BIN/hedef" tam
+[ -n "$BAS" ] && gecti "profilsiz cikti bos degil" || kaldi "profilsiz cikti bos"
 SON="$("$BIN/sandbox" --mod kill --profil "$P" -- "$BIN/hedef" tam 2>/dev/null)"
 esit "stdout profilsiz ile ayni" "$BAS" "$SON"
 
@@ -24,15 +25,19 @@ cikis "LOG: cikis 0" 0 "$BIN/sandbox" --mod log --profil "$P" -- "$BIN/hedef" ih
 icerir "unshare gercekten calisti" "$CIKTI" "ret=0 errno=0 (izinli calisti)"
 
 echo "[T14] SAY modu: engellenen sayisi ve adi"
-cikis "SAY: cikis 0" 0 "$BIN/sandbox" --mod say --profil "$P" -- "$BIN/hedef" ihlal
+cikis "SAY: cikis 0" 0 timeout 30 "$BIN/sandbox" --mod say --profil "$P" -- "$BIN/hedef" ihlal
 icerir "engellenen sayisi 1" "$CIKTI" "engellenen system call sayisi: 1"
 icerir "ad unshare" "$CIKTI" "engellendi: unshare"
-cikis "SAY izinli senaryoda 0 engel" 0 "$BIN/sandbox" --mod say --profil "$P" -- "$BIN/hedef" tam
+printf '%s\n' "# seccomp-izin-listesi v1" "izin execve" "izin brk" "izin mmap" "izin openat" "izin read" "izin write" "izin close" "izin pread64" "izin fstat" "izin newfstatat" "izin arch_prctl" "izin set_tid_address" "izin set_robust_list" "izin rseq" "izin prlimit64" "izin getrandom" "izin mprotect" "izin munmap" "izin access" "izin rt_sigaction" "izin rt_sigprocmask" "izin exit_group" "izin exit" "izin futex" "izin clone3" "izin madvise" "izin ioctl" "izin lseek" "izin mkdir" "izin rmdir" "izin unlink" "izin rename" "izin fsync" "izin getpid" "izin clock_nanosleep" >"$TMP/eksik.seccomp"
+cikis "SAY: eksik profilde hedef basarisiz (3) ama birden fazla engel sayilir" 3 timeout 30 "$BIN/sandbox" --mod say --profil "$TMP/eksik.seccomp" -- "$BIN/hedef" socket
+icerir "birden fazla farkli engellenen" "$CIKTI" "engellendi: socket"
+icerir "socketpair de adlandirildi" "$CIKTI" "engellendi: socketpair"
+cikis "SAY izinli senaryoda 0 engel" 0 timeout 30 "$BIN/sandbox" --mod say --profil "$P" -- "$BIN/hedef" tam
 icerir "0 engellendi" "$CIKTI" "engellenen system call sayisi: 0"
 
 echo "[T15] strace kaniti: killed by SIGSYS (dmesg gerekmez)"
 strace -f -o "$TMP/st.txt" "$BIN/sandbox" --mod kill --profil "$P" -- "$BIN/hedef" ihlal >/dev/null 2>&1
-icerir "strace: killed by SIGSYS" "$(cat "$TMP/st.txt")" "+++ killed by SIGSYS +++"
+icerir "strace: killed by SIGSYS" "$(cat "$TMP/st.txt")" "killed by SIGSYS"
 icerir "strace: son cagri unshare" "$(grep -B2 'killed by SIGSYS' "$TMP/st.txt")" "unshare"
 
 echo "[T16] ihlal_testi: iki mod birden"

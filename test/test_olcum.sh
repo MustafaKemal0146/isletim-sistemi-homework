@@ -16,4 +16,6 @@ esit "say-ihlal engellenen=1" "1" "$(awk -F, '$2=="say-ihlal"{print $4}' "$CSV" 
 esit "kill-ihlal cikis=159" "159" "$(awk -F, '$2=="kill-ihlal"{print $7}' "$CSV" | sort -u)"
 esit "yok-tam engellenen=0" "0" "$(awk -F, '$2=="yok-tam"{print $4}' "$CSV" | sort -u)"
 icerir "ozet tablosunda ort ± sapma" "$(cat "$TMP/olcum/test-ozet.md")" "±"
+OM="$(awk -F, '$2=="yok-tam"{s+=$5;n++} END{printf "%.2f", s/n}' "$CSV")"
+icerir "ozetteki yok-tam ortalamasi CSV'den hesaplananla ayni" "$(grep '^| yok-tam' "$TMP/olcum/test-ozet.md")" "| $OM ±"
 bitir

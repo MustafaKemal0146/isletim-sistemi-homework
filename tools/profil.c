@@ -130,7 +130,10 @@ static int strace_calistir(char *const *komut, const char *tablo)
         fprintf(stderr, "profil: strace calistirilamadi (kurulu mu? ptrace izni var mi?)\n");
         return -1;
     }
-    /* strace exits with the target's status; a failing target is still profiled. */
+    /* strace exits with the target's status; a failing target is still profiled,
+     * but a profile from a failed run under-allows, so say so. */
+    if (!WIFEXITED(st) || WEXITSTATUS(st) != 0)
+        fprintf(stderr, "profil: UYARI: hedef basarisiz bitti (durum 0x%x); profil eksik olabilir\n", (unsigned)st);
     return 0;
 }
 

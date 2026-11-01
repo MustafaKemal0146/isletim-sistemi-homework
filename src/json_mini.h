@@ -11,6 +11,8 @@
 #define JSON_MINI_H
 
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,8 +42,9 @@ static inline int sc_ekle(sc_liste *l, const char *ad, long cagri, long hata)
 {
     for (size_t i = 0; i < l->n; i++) {
         if (strcmp(l->k[i].ad, ad) == 0) {
-            l->k[i].cagri += cagri;
-            l->k[i].hata += hata;
+            /* saturate instead of overflowing (signed overflow is UB) */
+            l->k[i].cagri = l->k[i].cagri > LONG_MAX - cagri ? LONG_MAX : l->k[i].cagri + cagri;
+            l->k[i].hata = l->k[i].hata > LONG_MAX - hata ? LONG_MAX : l->k[i].hata + hata;
             return 0;
         }
     }
@@ -79,13 +82,13 @@ static inline int sc_ad_gecerli(const char *s)
 
 /* ---------------- reader ---------------- */
 typedef struct {
-    const char *p, *son;
+    const char *p, *son, *bas;
     char hata[96];
 } js_oku;
 
 static inline int js_hata(js_oku *j, const char *m)
 {
-    if (!j->hata[0]) snprintf(j->hata, sizeof j->hata, "%s (konum %p)", m, (const void *)j->p);
+    if (!j->hata[0]) snprintf(j->hata, sizeof j->hata, "%s (bayt %ld)", m, (long)(j->p - j->bas));
     return -1;
 }
 
@@ -144,6 +147,33 @@ static inline int js_sayi(js_oku *j, long *deger)
         while (j->p < j->son && isdigit((unsigned char)*j->p)) j->p++;
     }
     if (deger) *deger = tam ? strtol(b, NULL, 10) : 0;
+    return 0;
+}
+
+/* Counter field: must be a plain non-negative integer that fits in long. */
+static inline int js_tam_sayi(js_oku *j, long *deger)
+{
+    const char *b = j->p;
+    long v = 0;
+    if (js_sayi(j, &v) < 0) return -1;
+    for (const char *c = b; c < j->p; c++)
+        if (*c == '.' || *c == 'e' || *c == 'E') return js_hata(j, "sayac tam sayi olmali");
+    errno = 0;
+    v = strtol(b, NULL, 10);
+    if (errno == ERANGE) return js_hata(j, "sayac tasti");
+    *deger = v;
+    return 0;
+}
+
+/* Key reader: keys longer than `kap` simply never match ("" is returned). */
+static inline int js_anahtar(js_oku *j, char *cikti, size_t kap)
+{
+    const char *b = j->p;
+    if (js_dize(j, NULL, 0) < 0) return -1;
+    size_t n = (size_t)(j->p - b) - 2;
+    if (n + 1 > kap || memchr(b, '\\', n + 2)) { cikti[0] = '\0'; return 0; }
+    memcpy(cikti, b + 1, n);
+    cikti[n] = '\0';
     return 0;
 }
 
@@ -212,7 +242,7 @@ static inline int js_kayit(js_oku *j, sc_liste *l)
     if (j->p < j->son && *j->p == '}') return js_hata(j, "bos syscall nesnesi");
     for (;;) {
         js_bosluk(j);
-        if (js_dize(j, anahtar, sizeof anahtar) < 0) return -1;
+        if (js_anahtar(j, anahtar, sizeof anahtar) < 0) return -1;
         js_bosluk(j);
         if (j->p >= j->son || *j->p++ != ':') return js_hata(j, "':' bekleniyordu");
         js_bosluk(j);
@@ -220,9 +250,9 @@ static inline int js_kayit(js_oku *j, sc_liste *l)
             if (js_dize(j, ad, sizeof ad) < 0) return -1;
             ad_var = 1;
         } else if (!strcmp(anahtar, "cagri")) {
-            if (js_sayi(j, &cagri) < 0) return -1;
+            if (js_tam_sayi(j, &cagri) < 0) return -1;
         } else if (!strcmp(anahtar, "hata")) {
-            if (js_sayi(j, &hata) < 0) return -1;
+            if (js_tam_sayi(j, &hata) < 0) return -1;
         } else if (js_deger(j, 2) < 0) {
             return -1;
         }
@@ -239,7 +269,7 @@ static inline int js_kayit(js_oku *j, sc_liste *l)
 /* Parse a whole profile document. 0 ok, -1 error (message in j->hata). */
 static inline int js_profil_oku(const char *metin, size_t n, sc_liste *l, char *hata, size_t hata_boy)
 {
-    js_oku j = { .p = metin, .son = metin + n, .hata = "" };
+    js_oku j = { .p = metin, .son = metin + n, .bas = metin, .hata = "" };
     char anahtar[32];
     int syscalls_var = 0;
 
@@ -249,7 +279,7 @@ static inline int js_profil_oku(const char *metin, size_t n, sc_liste *l, char *
     if (j.p < j.son && *j.p == '}') { js_hata(&j, "bos nesne"); goto bitir; }
     for (;;) {
         js_bosluk(&j);
-        if (js_dize(&j, anahtar, sizeof anahtar) < 0) goto bitir;
+        if (js_anahtar(&j, anahtar, sizeof anahtar) < 0) goto bitir;
         js_bosluk(&j);
         if (j.p >= j.son || *j.p++ != ':') { js_hata(&j, "':' bekleniyordu"); goto bitir; }
         js_bosluk(&j);

@@ -98,7 +98,11 @@ static int izle(pid_t cocuk_pid, int *durum, struct rusage *ru, long *sayac)
         int sig = WSTOPSIG(st), olay = st >> 16, ilet = 0;
         if (olay == PTRACE_EVENT_SECCOMP) {
             struct user_regs_struct rg;
-            if (ptrace(PTRACE_GETREGS, w, 0, &rg) == 0) {
+            if (ptrace(PTRACE_GETREGS, w, 0, &rg) != 0) {
+                kill(w, SIGKILL); /* never fail open: the blocked call must not run */
+                continue;
+            }
+            {
                 long nr = (long)rg.orig_rax;
                 if (nr >= 0 && nr < MAX_SYSCALL) sayac[nr]++;
                 rg.orig_rax = (unsigned long long)-1; /* skip the real call ... */
@@ -141,9 +145,16 @@ int main(int argc, char **argv)
         if (!ctx) { izin_serbest(&iz); return CIKIS_SECCOMP; }
         /* The child's failure path (exec blocked/failed) must be able to exit even
          * with an empty profile; otherwise glibc's _exit() spins and crashes. */
-        if (!izin_var(&iz, "exit_group") && seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0) == 0)
+        const char *ek = "";
+        if (!izin_var(&iz, "exit_group")) {
+            if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0) != 0) {
+                fprintf(stderr, "sandbox: exit_group kurali eklenemedi\n");
+                return CIKIS_SECCOMP;
+            }
+            ek = " (+exit_group)";
             fprintf(stderr, "[sandbox] not: exit_group profilde yok; sandbox hata yolu icin eklendi\n");
-        fprintf(stderr, "[sandbox] profil=%s izinli=%zu\n", profil, iz.n);
+        }
+        fprintf(stderr, "[sandbox] profil=%s izinli=%zu%s\n", profil, iz.n, ek);
     }
 
     static long sayac[MAX_SYSCALL];
@@ -176,11 +187,12 @@ int main(int argc, char **argv)
         cikis = 128 + sinyal;
         fprintf(stderr, "[sandbox] cocuk sinyal ile sonlandi: %d (%s)%s\n", sinyal, strsignal(sinyal),
                 WCOREDUMP(durum) ? " [core]" : "");
-        if (sinyal == SIGSYS) {
+        if (sinyal == SIGSYS && mod == MOD_KILL) {
             engellenen = 1;
-            fprintf(stderr, "[sandbox] SIGSYS = izin listesinde olmayan system call (seccomp %s). "
-                            "Cekirdek audit kaydi: type=1326 (journalctl -k / dmesg, root gerekebilir)\n",
-                    mod == MOD_KILL ? "KILL_PROCESS" : "?");
+            fprintf(stderr, "[sandbox] SIGSYS = izin listesinde olmayan system call (seccomp KILL_PROCESS). "
+                            "Cekirdek audit kaydi: type=1326 (journalctl -k / dmesg, root gerekebilir)\n");
+        } else if (sinyal == SIGSYS) {
+            fprintf(stderr, "[sandbox] SIGSYS ama filtre bu modda oldurmez; hedefin kendi sinyali\n");
         }
     } else {
         cikis = WEXITSTATUS(durum);

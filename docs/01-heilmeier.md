@@ -1,64 +1,63 @@
-# 01 — Heilmeier Soruları (taslak)
+# 01 — Heilmeier Soruları (8 soru)
 
-> Taslak. Sayısal hedefler K2 ölçümlerinden sonra gerçek değerlerle güncellenecek;
-> şu an yazan sayılar **hedef**tir, ölçüm değildir.
+> Sayılar bu depodaki komutların çıktısıdır (bkz. `rapor/k2-ilk-olcum.md`); ölçümler
+> 01.11.2026 tarihli ön ölçümlerdir, K2'de temiz ortamda tekrarlanacaktır.
 
 ## 1. Ne yapmaya çalışıyorsunuz? (jargonsuz)
-Bir programın işletim sisteminden isteyebileceği şeyleri, yalnızca **gerçekten ihtiyaç duyduğu**
-isteklerle sınırlamak. Program normal çalışırken hangi istekleri (system call) yaptığını kendimiz
-otomatik olarak kaydediyoruz; sonra programı, bu listenin dışındaki her isteği reddeden bir
-kafeste çalıştırıyoruz. Program saldırgan tarafından ele geçirilse bile, listede olmayan bir şeyi
-— örneğin yeni bir program başlatmayı veya ağ bağlantısı açmayı — yapamıyor.
+Bir programın işletim sisteminden isteyebileceği şeyleri (system call) yalnızca **gerçekten
+ihtiyaç duyduğu** isteklerle sınırlamak. Programı normal çalışırken izleyip hangi istekleri
+yaptığını **otomatik** çıkarıyoruz; sonra programı, listede olmayan her isteği reddeden (ya da
+programı öldüren) bir kafeste çalıştırıyoruz. Program ele geçirilse bile listede olmayan bir şeyi —
+yeni program başlatmak, mount etmek, namespace açmak gibi — yapamaz.
 
 ## 2. Bugün nasıl yapılıyor, sınırları neler?
-- **Elle yazılmış profiller:** Docker'ın varsayılan seccomp profili (~300+ çağrıya izin verir),
-  systemd'nin `SystemCallFilter=@system-service` grupları, Chrome/Firefox'un el yapımı
-  sandbox politikaları. Geniş ve geneldir; belirli bir program için gereğinden fazla izin verir.
-  Elle bakımı zordur, glibc güncellemesiyle (ör. `clone3`, `rseq`) sessizce bozulabilir.
-- **OpenBSD `pledge()`:** Programcı kaynak koduna yazar; Linux'ta yok, kod değişikliği ister.
-- **Otomatik araçlar** (ör. Podman `oci-seccomp-bpf-hook`, akademik çalışmalar) vardır ama
-  ölçüm şeffaflığı ve "neyi kapattık?" sorusunun sayısal cevabı genelde verilmez.
-- **Temel sınır:** Dinamik (çalışma zamanı) profil yalnızca **çalıştırılan yolları** görür;
-  test edilmemiş bir hata yolu profilde yoksa üretimde program öldürülür.
+- **Elle yazılmış genel profiller:** Docker'ın varsayılan seccomp profili, systemd
+  `SystemCallFilter=@system-service`. Geniş ve geneldir; belirli bir programa gereğinden fazla izin verir
+  ve glibc güncellemeleriyle (`clone3`, `rseq`) sessizce eskiyebilir.
+- **OpenBSD `pledge()`:** programcı kaynak koda yazar; Linux'ta karşılığı yok.
+- **Dinamik izleme araçları** (`strace -c` tabanlı betikler): kaç çağrı yapıldığını söyler ama
+  **kendi başına güvenilir bir izin listesi vermez.** Bu projede bunu somut gördük: `strace -c`
+  özet tablosu hiç dönmeyen çağrıları (`exit_group`, thread `exit`) **saymıyor**; bu tablodan üretilen
+  profille hedef program ilk thread çıkışında SIGSYS ile ölüyor (bkz. `rapor/final-rapor.md` §Bulgular).
+- **Temel sınır:** dinamik profil yalnızca çalıştırılan yolları görür; test edilmemiş bir hata yolu
+  profilde yoksa üretimde süreç öldürülür.
 
 ## 3. Yaklaşımınızda yeni olan ne, neden başarılı olacağını düşünüyorsunuz?
-- İzin listesi **elle değil**, `strace -f` ile çalışma sırasında, thread'ler dahil çıkarılır.
-- Çıktı **deterministik**: aynı profil → bayt bayt aynı BPF (`sha256` ile doğrulanır).
-- Profilin **kapattığı** çağrı sayısı açıkça ölçülür: `x86_64 toplam syscall − izinli`.
-- İhlal iki modda gösterilir: `KILL_PROCESS` (SIGSYS, audit kaydı `type=1326`) ve
-  `ERRNO(EPERM)` (süreç yaşar, çağrı başarısız olur) — davranış farkı ölçülür.
-- Neden başarılı olur: libseccomp olgun bir kütüphane; çekirdek desteği (seccomp-bpf, 3.5+)
-  mevcut makinede doğrulandı (`actions_avail` bütün eylemleri içeriyor). Risk düşük, kapsam net.
+- İzin listesi elle değil, `strace -f` izinden **thread'ler dahil** çıkarılır; birden çok senaryo
+  (normal / hata / socket) birleştirilir.
+- Çıktı **deterministik**: aynı girdi → bayt bayt aynı `.seccomp` ve `.bpf` (sha256 ile doğrulanır).
+- Profilin **kapattığı** çağrı sayısı ölçülür: libseccomp'a göre x86_64'te 368 çağrıdan 45'i izinli,
+  **323'ü kapalı (%87,8)**.
+- İhlal dört modda gösterilir: KILL (SIGSYS), ERRNO (EPERM), LOG (kernel audit) ve **SAY**
+  (`SCMP_ACT_TRACE` + ptrace ile engellenen çağrıları sayıp adlandıran, root gerektirmeyen mod).
+- Neden başarılı oldu: libseccomp olgun, çekirdek desteği makinede doğrulandı; kapsam dar ve her
+  davranış testle sabitlendi (23 test grubu, 89 kontrol).
 
 ## 4. Kimin umurunda? Başarılı olursa ne fark eder?
-- Sunucu/servis yazanlar: kendi daemon'ları için dakikalar içinde dar bir profil üretebilir.
-- Konteyner/CI kullanıcıları: Docker'ın geniş varsayılan profili yerine programa özel profil.
-- Ders açısından: user/kernel sınırı, system call tablosu, BPF, sinyaller ve audit alt sistemi
-  tek bir somut araçta birleşir (H1 + H14).
-- Fark ölçülebilir: hedef programın erişebildiği çekirdek yüzeyi ~370 çağrıdan **hedef: <60**
-  çağrıya iner (≈ %85 daralma — K2'de gerçek değer ölçülecek).
+- Servis/daemon yazanlar için dakikalar içinde programa özel dar profil.
+- Konteyner kullanıcıları için Docker'ın geniş profili yerine programa özel profil.
+- Ders açısından user/kernel sınırı, system call tablosu, BPF, sinyaller ve audit tek araçta birleşir (H1 + H14).
+- Fark ölçülebilir: erişilebilir çekirdek yüzeyi 368 → 45 çağrı.
 
 ## 5. Riskler neler?
-Ayrıntı [03-risk-ve-b-plan.md](03-risk-ve-b-plan.md). En önemlileri:
-kapsama eksikliği (çalışmayan kod yolu profilde yok), audit günlüğüne root'suz erişim
-(`dmesg_restrict=1`), KILL modunda yalnızca **ilk** ihlalin görülmesi, ASan'ın ek syscall'ları,
-glibc/çekirdek sürümüne bağlı profil farkları.
+Ayrıntı: [03-risk-ve-b-plan.md](03-risk-ve-b-plan.md). Gerçekleşenler: `strace -c` eksikliği (çözüldü),
+`libseccomp-dev` kurulumu için sudo yokluğu (rootsuz yedekle çözüldü), SAY modunda eksik profil
+yüzünden askıda kalma (belgelendi). Açık: kapsama eksikliği, glibc/çekirdek sürüm bağımlılığı.
 
-## 6. Ne kadar sürer, maliyeti nedir?
-- Süre: ~9 hafta (02.11.2026 → final). Plan: [02-haftalik-plan.md](02-haftalik-plan.md).
-- Maliyet: Donanım/lisans maliyeti yok; açık kaynak araçlar ve mevcut dizüstü/VM.
-  Tahmini emek ≈ 6–8 saat/hafta.
+## 6. Ne kadar maliyetli?
+Donanım/lisans maliyeti yok (açık kaynak araçlar, mevcut dizüstü). Emek: yaklaşık 6–8 saat/hafta.
 
-## 7. Başarıyı ara ve final sınavlarda nasıl ölçeceksiniz?
+## 7. Ne kadar sürer?
+Dönem boyunca ~10 hafta; çekirdek akış ilk gün çalışır hale geldi, K2–K3 aralığı sağlamlaştırma,
+temiz ortam doğrulaması ve video içindir. Ayrıntı: [02-haftalik-plan.md](02-haftalik-plan.md).
+
+## 8. Ara ve final kontrollerde başarı nasıl ölçülecek?
 | Kontrol | Ölçüt | Kanıt |
 |---|---|---|
-| K1 | Açık depo, bu belgeler, ilk commit | GitHub bağlantısı |
-| K2 | Hedef profilsiz/profilli çalışır, 5 tekrar ortalama ± sapma | `olcum/*.csv`, `rapor/k2-ilk-olcum.md` |
-| K3 | Profil→filtre→sandbox akışı, iki ihlal modu, ≥8 test yeşil, `v0.5` | `make test` çıktısı, video |
-| Final | Deterministik filtre, Docker'da yeşil test, kırılma testleri, final rapor | `scripts/test.sh`, demo |
+| K1 | Açık depo, belgeler | GitHub bağlantısı |
+| K2 | Hedef profilsiz/profilli çalışır, 5 tekrar ort ± sd | `olcum/*.csv`, `rapor/k2-ilk-olcum.md` |
+| K3 | Akış, iki ihlal modu, ≥10 test yeşil, `v0.5`, ≤3 dk video | `make test`, `demo/` |
+| Final | Deterministik filtre, temiz ortamda yeşil test, kırılma testleri | `scripts/test.sh`, `docker compose run --rm test` |
 
-Başarı eşikleri:
-- Profilli çalışmada hedef programın çıktısı profilsizle **aynı** (exit 0, aynı stdout özeti).
-- Yasaklı çağrıda KILL modunda süreç **SIGSYS (31)** ile ölür; ERRNO modunda çağrı `EPERM` döner.
-- Aynı girdiden iki kez üretilen `hedef.seccomp` dosyalarının `sha256` değeri aynı.
-- Filtre ek yükü raporlanır (ölçülen değer; şimdilik bir eşik iddia edilmiyor).
+Başarı eşikleri (hepsi testle doğrulanıyor): profilli çalışmada stdout profilsizle aynı; yasaklı çağrıda
+KILL → SIGSYS (exit 159), ERRNO → EPERM; aynı girdi → aynı sha256.

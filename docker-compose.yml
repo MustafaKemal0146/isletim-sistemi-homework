@@ -1,0 +1,9 @@
+services:
+  test:
+    build: .
+    # strace and the 'say' mode use ptrace; Docker's default profile may deny it.
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined   # only for this test container; the sandbox under test installs its own filter
+    command: ["bash", "scripts/test.sh"]

@@ -59,6 +59,7 @@ kos() { # $1 mod, $2 hedef arg -> prints the SANDBOX_OLCUM line
 
 alan() { sed -n "s/.*\b$2=\([^ ]*\).*/\1/p" <<<"$1"; }
 
+if [ -z "${SADECE_OZET:-}" ]; then   # SADECE_OZET=1: rebuild summary/PNG from an existing CSV
 echo "tekrar,senaryo,syscall_sayisi,engellenen,sure_ms,rss_kb,exit_kodu" >"$CSV"
 for sen in "${SENARYOLAR[@]}"; do
     IFS=: read -r ad mod arg <<<"$sen"
@@ -71,6 +72,7 @@ for sen in "${SENARYOLAR[@]}"; do
     echo "olcum: $ad tamam ($TEKRAR tekrar)" >&2
 done
 
+fi
 # ---- summary ----
 KAPAT="$("$BIN/profil_uret" "${PROFIL%.seccomp}.json" -o "$tmp/x.seccomp" --ozet 2>/dev/null || echo "(profil JSON yok)")"
 {
@@ -82,7 +84,10 @@ KAPAT="$("$BIN/profil_uret" "${PROFIL%.seccomp}.json" -o "$tmp/x.seccomp" --ozet
     echo '```'
     uname -a
     gcc --version | head -1
-    echo "libseccomp: $(pkg-config --modversion libseccomp 2>/dev/null || echo 2.5.5-1ubuntu3.1 '(statik, .deps)')"
+    echo "OS: $(. /etc/os-release; echo "$PRETTY_NAME") ; $(ldd --version | head -1)"
+    echo "yama.ptrace_scope=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null) dmesg_restrict=$(cat /proc/sys/kernel/dmesg_restrict)"
+    if v=$(pkg-config --modversion libseccomp 2>/dev/null); then echo "libseccomp: $v (sistem)"
+    else echo "libseccomp: $(sed -n 's/^Version: //p' .deps/usr/lib/x86_64-linux-gnu/pkgconfig/libseccomp.pc) (.deps, statik)"; fi
     strace -V | head -1
     grep -m1 'model name' /proc/cpuinfo || true
     echo "nproc: $(nproc)"
@@ -91,20 +96,20 @@ KAPAT="$("$BIN/profil_uret" "${PROFIL%.seccomp}.json" -o "$tmp/x.seccomp" --ozet
     echo
     echo "## Sonuclar (ortalama ± standart sapma, n=$TEKRAR)"
     echo
-    echo "| Senaryo | syscall sayisi | engellenen | sure_ms | min–max ms | rss_kb | exit |"
+    echo "| Senaryo | syscall sayisi (ort) | engellenen (ort) | sure_ms | min–max ms | rss_kb | exit |"
     echo "|---|---|---|---|---|---|---|"
     awk -F, 'NR>1 {
-        s=$2; n[s]++; sc[s]=$3; eng[s]=$4; ex[s]=$7;
+        s=$2; n[s]++; scs[s]+=$3; engs[s]+=$4; ex[s]=$7;
         t=$5; sum[s]+=t; sq[s]+=t*t; if(!(s in mn)||t<mn[s])mn[s]=t; if(!(s in mx)||t>mx[s])mx[s]=t;
         r=$6; rs[s]+=r; rq[s]+=r*r;
         if(!(s in ord)){ord[s]=++k; nm[k]=s}
     } END {
         for(i=1;i<=k;i++){ s=nm[i]; m=sum[s]/n[s]; v=(n[s]>1)?(sq[s]-n[s]*m*m)/(n[s]-1):0; if(v<0)v=0;
           rm=rs[s]/n[s]; rv=(n[s]>1)?(rq[s]-n[s]*rm*rm)/(n[s]-1):0; if(rv<0)rv=0;
-          printf "| %s | %d | %d | %.2f ± %.2f | %.2f–%.2f | %.0f ± %.0f | %d |\n", s, sc[s], eng[s], m, sqrt(v), mn[s], mx[s], rm, sqrt(rv), ex[s] }
+          printf "| %s | %.1f | %.1f | %.2f ± %.2f | %.2f–%.2f | %.0f ± %.0f | %d |\n", s, scs[s]/n[s], engs[s]/n[s], m, sqrt(v), mn[s], mx[s], rm, sqrt(rv), ex[s] }
     }' "$CSV"
     echo
-    echo "Standart sapma: ornek sapmasi (n-1). Ham veri: \`$CSV\`."
+    echo "syscall sayisi ve engellenen: tekrarlarin ortalamasi; exit: tum tekrarlarda ayni deger. Standart sapma: ornek sapmasi (n-1). Ham veri: \`$CSV\`."
     echo
     echo "## Kapatilan system call sayisi"
     echo '```'

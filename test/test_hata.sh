@@ -36,6 +36,7 @@ esit "bos profil 0 izinli" "# izinli: 0" "$(grep '^# izinli' "$TMP/bos.seccomp")
 if [ "${ASAN:-0}" != 1 ]; then
     cikis "bos profil + ERRNO: execve bile engellenir -> 127" 127 "$BIN/sandbox" --mod errno --profil "$TMP/bos.seccomp" -- /bin/true
     icerir "mesaj exec engellendi" "$CIKTI" "komut calistirilamadi"
+    icerir "exit_group notu ve izinli=0 (+exit_group) yazildi" "$CIKTI" "izinli=0 (+exit_group)"
     cikis "bos profil + KILL: SIGSYS -> 159" 159 "$BIN/sandbox" --mod kill --profil "$TMP/bos.seccomp" -- /bin/true
 fi
 

@@ -46,10 +46,12 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--ozet")) ozet = 1;
         else if (argv[i][0] == '-') return kullanim();
         else if (ng < 64) girdiler[ng++] = argv[i];
+        else { fprintf(stderr, "profil_uret: en fazla 64 girdi dosyasi\n"); return CIKIS_KULLANIM; }
     }
     if (!cikti || ng == 0) return kullanim();
 
     sc_liste l = { 0 };
+    izin_listesi iz = { 0 };
     int rc = CIKIS_OK;
     for (int i = 0; i < ng; i++) {
         size_t n;
@@ -58,26 +60,25 @@ int main(int argc, char **argv)
         if (!m) {
             fprintf(stderr, "profil_uret: '%s' okunamadi: %s\n", girdiler[i], strerror(errno));
             rc = CIKIS_PROFIL;
-            goto cik;
+            goto cik2;
         }
         if (js_profil_oku(m, n, &l, hata, sizeof hata) < 0) {
             fprintf(stderr, "profil_uret: '%s' bozuk JSON: %s\n", girdiler[i], hata);
             free(m);
             rc = CIKIS_PROFIL;
-            goto cik;
+            goto cik2;
         }
         free(m);
     }
     sc_sirala(&l);
 
     /* Resolve every name first: an unknown name is an error, never silently dropped. */
-    izin_listesi iz = { 0 };
     for (size_t i = 0; i < l.n; i++) {
         if (seccomp_syscall_resolve_name(l.k[i].ad) == __NR_SCMP_ERROR) {
             fprintf(stderr, "profil_uret: bilinmeyen syscall '%s' (libseccomp %d.%d.%d)\n", l.k[i].ad,
                     SCMP_VER_MAJOR, SCMP_VER_MINOR, SCMP_VER_MICRO);
             rc = CIKIS_PROFIL;
-            goto cik;
+            goto cik2;
         }
         if (iz.n == iz.kap) {
             size_t nk = iz.kap ? iz.kap * 2 : 64;
@@ -125,7 +126,6 @@ int main(int argc, char **argv)
     }
 cik2:
     izin_serbest(&iz);
-cik:
     sc_serbest(&l);
     return rc;
 }

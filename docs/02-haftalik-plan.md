@@ -1,4 +1,9 @@
-# 02 — Haftalık Plan (taslak)
+# 02 — Haftalık Plan
+
+> **Güncelleme 01.11.2026:** Çekirdek akış (hedef, profil, filtre, sandbox, ölçüm, 23 test grubu) ilk
+> gün tamamlandı. Aşağıdaki W2–W6 satırlarının işi öne çekildi; kalan haftalar **gerçek** sağlamlaştırma
+> işi içindir (temiz ortam doğrulaması, kırılma testleri, video, ek senaryolar). Tarihler geriye
+> alınmaz; her hafta kendi commit'leriyle ilerler.
 
 Takvim haftaları 02.11.2026'dan başlar. Her hafta en az bir anlamlı commit hedeflenir
 (resmi kural: commit geçmişi ≥ 5 farklı haftaya yayılmalı). Final tarihi duyurulunca
@@ -9,7 +14,7 @@ W9–W10 güncellenecek.
 | W1 | 02–08 Kas | 0–1 | Repo iskeleti, Makefile, Heilmeier, plan, risk; `libseccomp-dev` kurulumu; mimari taslak (strace vs ptrace kararı) | `docs/00–04`, `make kontrol` yeşil | — |
 | W2 | 09–15 Kas | 1→2 | **K1 teslimi (12.11).** `src/hedef.c` (dosya, socket, mmap, zaman, thread); `tools/profil` prototipi (strace -f çıktısını ayrıştırma → JSON/MD) | Hedef profilsiz çalışır; profil JSON üretilir | `v0.1` |
 | W3 | 16–22 Kas | 2 | `tools/profil_uret.c` (libseccomp, sıralı ekleme, `seccomp_export_bpf`); `src/sandbox.c` (`PR_SET_NO_NEW_PRIVS` → `seccomp_load` → `execve`), `--mod kill|errno` | Hedef profille çalışır; aynı girdi → aynı sha256 | — |
-| W4 | 23–29 Kas | 2 | `tools/olcum.sh` (5 tekrar, ort ± sapma, süre, RSS, syscall sayısı); `tools/sayac.c` (kapatılan çağrı sayısı); **K2 teslimi (26.11)** | `olcum/2026-11-2x-*.csv`, `rapor/k2-ilk-olcum.md` | `v0.2` |
+| W4 | 23–29 Kas | 2 | `tools/olcum.sh` (5 tekrar, ort ± sapma, süre, RSS, syscall sayısı); kapatılan çağrı sayısı `profil_uret --ozet` içinde; **K2 teslimi (26.11)** | `olcum/2026-11-2x-*.csv`, `rapor/k2-ilk-olcum.md` | `v0.2` |
 | W5 | 30 Kas–06 Ara | 3 | İhlal senaryoları (hedef `--ihlal` bayrağı), engellenen çağrıların sayımı (ERRNO+strace, SCMP_ACT_LOG); hata yolları; `test/*.sh` ≥ 8 test; ASan/UBSan | `make test` yeşil, `make sanitize` temiz | — |
 | W6 | 07–13 Ara | 3 | Demo senaryosu + ≤3 dk video; ara rapor; **K3 teslimi (10.12)** | `demo/demo-senaryosu.md`, `rapor/k3-ara-rapor.md` | `v0.5` |
 | W7 | 14–20 Ara | 4 | Kırılma testleri: kill -9, disk dolu, MemoryMax=64M, CPUQuota=20%, izinsiz syscall + audit | Her biri için komut + çıktı kaydı | — |

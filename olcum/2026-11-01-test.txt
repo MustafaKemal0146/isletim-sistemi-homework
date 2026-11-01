@@ -1,0 +1,124 @@
+derleme tamam: 5 program -> bin/
+== test/test_filtre.sh
+[T5] determinizm: ayni girdi -> ayni .seccomp ve .bpf
+  ok   - .seccomp sha256 esit
+  ok   - .bpf sha256 esit
+[T6] girdi sirasindan bagimsiz
+  ok   - farkli girdi sirasi ayni cikti
+[T7] bicim: baslik, izinli sayisi satirlarla tutarli
+  ok   - ilk satir baslik
+  ok   - # izinli sayisi = izin satirlari
+  ok   - izin satirlari sirali
+[T8] bilinmeyen syscall adi reddedilir (sessizce atlanmaz)
+  ok   - bilinmeyen ad -> cikis 5
+  ok   - hata mesaji adi soyluyor
+[T9] --ozet: kapatilan syscall sayisi
+  ok   - izinli = .seccomp satir sayisi
+  ok   - kapatilan = toplam - izinli
+  ok   - toplam syscall makul (>300)
+[T9b] uzun anahtar ve tam sayi olmayan sayac
+  ok   - uzun kok anahtari kabul
+  ok   - 1e3 sayaci reddedilir
+  ok   - tasan sayac reddedilir
+  ok   - bilinmeyen ad sonda -> 5 (sizinti yolu)
+  -> 15 kontrol gecti
+== test/test_hata.sh
+[T18] bozuk JSON
+  ok   - kesik JSON -> 5
+  ok   - mesaj 'bozuk JSON'
+  ok   - JSON olmayan dosya -> 5
+  ok   - syscalls alani yok -> 5
+  ok   - gecersiz syscall adi -> 5
+  ok   - belge sonunda fazlalik -> 5
+  ok   - birlestir bozuk girdiyi reddeder
+[T19] eksik dosya / kullanim
+  ok   - olmayan JSON -> 5
+  ok   - profil_uret argumansiz -> 2
+  ok   - sandbox --profil olmadan -> 2
+  ok   - sandbox gecersiz mod -> 2
+  ok   - olmayan .seccomp -> 5
+  ok   - basliksiz .seccomp -> 5
+  ok   - bozuk satirli .seccomp -> 5
+[T20] bos profil: hicbir sey izinli degil
+  ok   - bos profil 0 izinli
+  ok   - bos profil + ERRNO: execve bile engellenir -> 127
+  ok   - mesaj exec engellendi
+  ok   - exit_group notu ve izinli=0 (+exit_group) yazildi
+  ok   - bos profil + KILL: SIGSYS -> 159
+[T21] komut bulunamadi
+  ok   - olmayan komut (profilsiz mod) -> 127
+  ok   - profil izinli syscall'i ihlal sayilmaz
+  -> 21 kontrol gecti
+== test/test_olcum.sh
+[T22] olcum.sh: 5 tekrar, CSV biçimi, ozet
+  ok   - baslik satiri
+  ok   - yok-tam: 5 tekrar
+  ok   - kill-tam: 5 tekrar
+  ok   - errno-tam: 5 tekrar
+  ok   - say-tam: 5 tekrar
+  ok   - say-ihlal: 5 tekrar
+  ok   - kill-ihlal: 5 tekrar
+  ok   - tum satirlar 7 sutun
+  ok   - say-ihlal engellenen=1
+  ok   - kill-ihlal cikis=159
+  ok   - yok-tam engellenen=0
+  ok   - ozet tablosunda ort ± sapma
+  ok   - ozetteki yok-tam ortalamasi CSV'den hesaplananla ayni
+  -> 13 kontrol gecti
+== test/test_profil.sh
+[T1] golden: strace -c tablosu -> beklenen JSON (bayt bayt)
+  ok   - tablo ayristirma, golden JSON ile ayni
+  ok   - hata sayaci okundu (access hata=1)
+[T2] canli profil: strace -f izi
+  ok   - canli profilde execve var
+  ok   - canli profilde write var
+  ok   - canli profilde openat var
+  ok   - canli profilde mmap var
+  ok   - canli profilde clone3 var
+  ok   - canli profilde exit_group var
+  ok   - canli profilde exit var
+[T3] -c tablosu exit_group'u kacirir, iz kacirmaz (bilinen sinir, GERCEK strace -c kosusuyla)
+  ok   - canli -c tablosunda exit_group yok
+  ok   - ayni kosunun tam izinde exit_group var
+[T4] birlestirme: birlesim, alfabetik sira, sayaclar toplanir
+  ok   - adlar sirali ve tekrarsiz
+  ok   - sayaclar toplandi (read 3+4=7, hata 1+2=3)
+  ok   - toplam_cagri 9
+  ok   - hata senaryosundan connect geldi
+  -> 15 kontrol gecti
+== test/test_sandbox.sh
+[T10] izinli calisma: profille cikti profilsizle ayni
+  ok   - KILL modunda hedef tam basarili
+  ok   - profilsiz cikti bos degil
+  ok   - stdout profilsiz ile ayni
+[T11] izinsiz syscall + KILL -> SIGSYS (31), cikis 159
+  ok   - KILL: cikis kodu 128+31
+  ok   - rapor SIGSYS diyor
+  ok   - ihlal satiri hic yazilmadi (olum cagri aninda)
+[T12] izinsiz syscall + ERRNO -> EPERM, surec yasar
+  ok   - ERRNO: cikis 0
+  ok   - unshare ret=-1 errno=1
+[T13] LOG modu: cagri calisir (kernel audit'e yazar)
+  ok   - LOG: cikis 0
+  ok   - unshare gercekten calisti
+[T14] SAY modu: engellenen sayisi ve adi
+  ok   - SAY: cikis 0
+  ok   - engellenen sayisi 1
+  ok   - ad unshare
+  ok   - SAY: eksik profilde hedef basarisiz (3) ama birden fazla engel sayilir
+  ok   - birden fazla farkli engellenen
+  ok   - socketpair de adlandirildi
+  ok   - SAY izinli senaryoda 0 engel
+  ok   - 0 engellendi
+[T15] strace kaniti: killed by SIGSYS (dmesg gerekmez)
+  ok   - strace: killed by SIGSYS
+  ok   - strace: son cagri unshare
+[T16] ihlal_testi: iki mod birden
+  ok   - ihlal_testi BASARILI
+  ok   - SIGSYS ve EPERM gosterildi
+[T17] sira: NO_NEW_PRIVS=1 ve Seccomp=2 filtre yuklendikten sonra (root'suz)
+  ok   - LOG modunda /proc/self/status okunur
+  ok   - NoNewPrivs: 1
+  ok   - Seccomp: 2 (filter modu)
+  -> 25 kontrol gecti
+test tamam: 5 betik
