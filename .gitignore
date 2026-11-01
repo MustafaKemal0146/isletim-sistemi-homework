@@ -1,0 +1,19 @@
+# Build outputs
+bin/
+build/
+*.o
+*.d
+*.a
+*.so
+
+# Measurement scratch (final CSVs under olcum/ are committed on purpose)
+olcum/*.tmp
+*.log
+strace.out*
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+__pycache__/
